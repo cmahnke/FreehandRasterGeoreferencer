@@ -31,8 +31,8 @@ pythonpath = [
 ]
 
 [tool.ruff]
-line-length = 100
-target-version = "py312"
+line-length = 88
+target-version = "py313"
 extend-exclude = [
     ".prompts",
 ]

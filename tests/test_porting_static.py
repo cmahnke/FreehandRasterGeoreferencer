@@ -69,6 +69,14 @@ def test_no_legacy_qgis3_qt5_artifacts_remain():
     assert not re.search(r"import\s+\.\s*ui_", source)
 
 
+def test_properties_dialog_uses_qt6_tab_stop_api():
+    ui = (PLUGIN / "propertiesdialog.ui").read_text()
+
+    assert "tabStopWidth" not in ui
+    assert "tabStopDistance" in ui
+    assert "setTabStopDistance" not in (PLUGIN / "propertiesdialog.py").read_text()
+
+
 def test_plugin_package_contains_runtime_assets():
     required = [
         PLUGIN / "__init__.py",

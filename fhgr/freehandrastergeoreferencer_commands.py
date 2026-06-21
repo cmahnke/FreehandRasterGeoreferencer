@@ -46,8 +46,12 @@ class ExportGeorefRasterCommand:
                 b = -layer.yScale * math.sin(radRotation)
                 d = layer.xScale * -math.sin(radRotation)
                 e = -layer.yScale * math.cos(radRotation)
-                c = layer.center.x() - (a * (originalWidth - 1) / 2 + b * (originalHeight - 1) / 2)
-                f = layer.center.y() - (d * (originalWidth - 1) / 2 + e * (originalHeight - 1) / 2)
+                c = layer.center.x() - (
+                    a * (originalWidth - 1) / 2 + b * (originalHeight - 1) / 2
+                )
+                f = layer.center.y() - (
+                    d * (originalWidth - 1) / 2 + e * (originalHeight - 1) / 2
+                )
 
             else:
                 # transform the image with rotation and scaling between the
@@ -131,11 +135,17 @@ class ExportGeorefRasterCommand:
             with open(worldFilePath, "w") as writer:
                 # order is as described at
                 # http://webhelp.esri.com/arcims/9.3/General/topics/author_world_files.htm
-                writer.write(f"{a:.13f}\n{d:.13f}\n{b:.13f}\n{e:.13f}\n{c:.13f}\n{f:.13f}")
+                writer.write(
+                    f"{a:.13f}\n{d:.13f}\n{b:.13f}\n{e:.13f}\n{c:.13f}\n{f:.13f}"
+                )
 
             crsFilePath = rasterPath + ".aux.xml"
             with open(crsFilePath, "w") as writer:
-                writer.write(self.auxContent(self.iface.mapCanvas().mapSettings().destinationCrs()))
+                writer.write(
+                    self.auxContent(
+                        self.iface.mapCanvas().mapSettings().destinationCrs()
+                    )
+                )
 
             widget = QgsMessageBar.createMessage(
                 "Raster Geoferencer", "Raster exported successfully."
@@ -145,7 +155,8 @@ class ExportGeorefRasterCommand:
             QgsMessageLog.logMessage(repr(ex))
             widget = QgsMessageBar.createMessage(
                 "Raster Geoferencer",
-                "There was an error performing this command. See QGIS Message log for details.",
+                "There was an error performing this command. "
+                "See QGIS Message log for details.",
             )
             self.iface.messageBar().pushWidget(widget, Qgis.MessageLevel.Critical, 5)
 

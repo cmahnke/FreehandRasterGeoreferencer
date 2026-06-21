@@ -50,7 +50,9 @@ class FreehandRasterGeoreferencer:
             "Add raster for interactive georeferencing",
             self.iface.mainWindow(),
         )
-        self.actionAddLayer.setObjectName("FreehandRasterGeoreferencingLayerPlugin_AddLayer")
+        self.actionAddLayer.setObjectName(
+            "FreehandRasterGeoreferencingLayerPlugin_AddLayer"
+        )
         self.actionAddLayer.triggered.connect(self.addLayer)
 
         self.actionMoveRaster = QAction(
@@ -58,7 +60,9 @@ class FreehandRasterGeoreferencer:
             "Move raster",
             self.iface.mainWindow(),
         )
-        self.actionMoveRaster.setObjectName("FreehandRasterGeoreferencingLayerPlugin_MoveRaster")
+        self.actionMoveRaster.setObjectName(
+            "FreehandRasterGeoreferencingLayerPlugin_MoveRaster"
+        )
         self.actionMoveRaster.triggered.connect(self.moveRaster)
         self.actionMoveRaster.setCheckable(True)
 
@@ -78,7 +82,9 @@ class FreehandRasterGeoreferencer:
             "Scale raster",
             self.iface.mainWindow(),
         )
-        self.actionScaleRaster.setObjectName("FreehandRasterGeoreferencingLayerPlugin_ScaleRaster")
+        self.actionScaleRaster.setObjectName(
+            "FreehandRasterGeoreferencingLayerPlugin_ScaleRaster"
+        )
         self.actionScaleRaster.triggered.connect(self.scaleRaster)
         self.actionScaleRaster.setCheckable(True)
 
@@ -297,7 +303,9 @@ class FreehandRasterGeoreferencer:
         imageName, _ = os.path.splitext(os.path.basename(imagePath))
         screenExtent = self.iface.mapCanvas().extent()
 
-        layer = FreehandRasterGeoreferencerLayer(self, imagePath, imageName, screenExtent)
+        layer = FreehandRasterGeoreferencerLayer(
+            self, imagePath, imageName, screenExtent
+        )
         if layer.isValid():
             QgsProject.instance().addMapLayer(layer)
             self.layers[layer.id()] = layer
@@ -366,9 +374,11 @@ class FreehandRasterGeoreferencer:
 
     def spinBoxRotateValueChangeEvent(self, val):
         layer = self.layer
-        layer.history.append(
-            {"action": "rotation", "rotation": layer.rotation, "center": layer.center}
-        )
+        layer.history.append({
+            "action": "rotation",
+            "rotation": layer.rotation,
+            "center": layer.center,
+        })
         layer.setRotation(val)
         layer.repaint()
         layer.commitTransformParameters()

@@ -35,12 +35,16 @@ class ExportGeorefRasterDialog(QDialog):
 
     def setupOnlyWorldFile(self):
         if self.checkBoxOnlyWorldFile.isChecked():
-            self._originalCheckBoxRotationModeChecked = self.checkBoxRotationMode.isChecked()
+            self._originalCheckBoxRotationModeChecked = (
+                self.checkBoxRotationMode.isChecked()
+            )
             self.checkBoxRotationMode.setChecked(True)
             self.checkBoxRotationMode.setEnabled(False)
 
         else:
-            self.checkBoxRotationMode.setChecked(self._originalCheckBoxRotationModeChecked)
+            self.checkBoxRotationMode.setChecked(
+                self._originalCheckBoxRotationModeChecked
+            )
             self.checkBoxRotationMode.setEnabled(True)
 
     def showBrowserDialog(self):
