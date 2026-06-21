@@ -12,15 +12,15 @@
 import math
 import os
 
-from PyQt5.QtCore import qDebug, QPointF, QRectF, QSize
-from PyQt5.QtGui import QColor, QImage, QImageWriter, QPainter
 from qgis.core import Qgis, QgsMessageLog
 from qgis.gui import QgsMessageBar
+from qgis.PyQt.QtCore import QPointF, QRectF, QSize, qDebug
+from qgis.PyQt.QtGui import QColor, QImage, QImageWriter, QPainter
 
 from . import utils
 
 
-class ExportGeorefRasterCommand(object):
+class ExportGeorefRasterCommand:
     def __init__(self, iface):
         self.iface = iface
 
@@ -46,12 +46,8 @@ class ExportGeorefRasterCommand(object):
                 b = -layer.yScale * math.sin(radRotation)
                 d = layer.xScale * -math.sin(radRotation)
                 e = -layer.yScale * math.cos(radRotation)
-                c = layer.center.x() - (
-                    a * (originalWidth - 1) / 2 + b * (originalHeight - 1) / 2
-                )
-                f = layer.center.y() - (
-                    d * (originalWidth - 1) / 2 + e * (originalHeight - 1) / 2
-                )
+                c = layer.center.x() - (a * (originalWidth - 1) / 2 + b * (originalHeight - 1) / 2)
+                f = layer.center.y() - (d * (originalWidth - 1) / 2 + e * (originalHeight - 1) / 2)
 
             else:
                 # transform the image with rotation and scaling between the
@@ -74,17 +70,20 @@ class ExportGeorefRasterCommand(object):
                     scaleY * originalHeight * math.cos(radRotation)
                 )
 
-                qDebug("wh %f,%f" % (width, height))
+                qDebug(f"wh {width:f},{height:f}")
 
                 img = QImage(
-                    QSize(math.ceil(width), math.ceil(height)), QImage.Format_ARGB32
+                    QSize(math.ceil(width), math.ceil(height)),
+                    QImage.Format.Format_ARGB32,
                 )
                 # transparent background
                 img.fill(QColor(0, 0, 0, 0))
 
                 painter = QPainter(img)
-                painter.setRenderHint(QPainter.Antialiasing, True)
-                # painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+                painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+                # painter.setRenderHint(
+                #     QPainter.RenderHint.SmoothPixmapTransform, True
+                # )
 
                 rect = QRectF(
                     QPointF(-layer.image.width() / 2.0, -layer.image.height() / 2.0),
@@ -132,30 +131,23 @@ class ExportGeorefRasterCommand(object):
             with open(worldFilePath, "w") as writer:
                 # order is as described at
                 # http://webhelp.esri.com/arcims/9.3/General/topics/author_world_files.htm
-                writer.write(
-                    "%.13f\n%.13f\n%.13f\n%.13f\n%.13f\n%.13f" % (a, d, b, e, c, f)
-                )
+                writer.write(f"{a:.13f}\n{d:.13f}\n{b:.13f}\n{e:.13f}\n{c:.13f}\n{f:.13f}")
 
             crsFilePath = rasterPath + ".aux.xml"
             with open(crsFilePath, "w") as writer:
-                writer.write(
-                    self.auxContent(
-                        self.iface.mapCanvas().mapSettings().destinationCrs()
-                    )
-                )
+                writer.write(self.auxContent(self.iface.mapCanvas().mapSettings().destinationCrs()))
 
             widget = QgsMessageBar.createMessage(
                 "Raster Geoferencer", "Raster exported successfully."
             )
-            self.iface.messageBar().pushWidget(widget, Qgis.Info, 2)
+            self.iface.messageBar().pushWidget(widget, Qgis.MessageLevel.Info, 2)
         except Exception as ex:
             QgsMessageLog.logMessage(repr(ex))
             widget = QgsMessageBar.createMessage(
                 "Raster Geoferencer",
-                "There was an error performing this command. "
-                "See QGIS Message log for details.",
+                "There was an error performing this command. See QGIS Message log for details.",
             )
-            self.iface.messageBar().pushWidget(widget, Qgis.Critical, 5)
+            self.iface.messageBar().pushWidget(widget, Qgis.MessageLevel.Critical, 5)
 
     def auxContent(self, crs):
         content = """<PAMDataset>

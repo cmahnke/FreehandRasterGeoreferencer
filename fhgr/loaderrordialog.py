@@ -11,21 +11,21 @@
 
 import os.path
 
-from PyQt5.QtCore import qDebug, Qt
-from PyQt5.QtWidgets import QApplication, QDialog, QFileDialog, QMessageBox
 from qgis.core import QgsProject
+from qgis.PyQt.QtCore import Qt, qDebug
+from qgis.PyQt.QtWidgets import QApplication, QDialog, QFileDialog, QMessageBox
 
 from . import utils
-from .ui_loaderrordialog import Ui_LoadError
+from .qt_ui import load_ui
 
 
-class LoadErrorDialog(QDialog, Ui_LoadError):
+class LoadErrorDialog(QDialog):
     def __init__(self, filepath):
         QDialog.__init__(self)
-        self.setupUi(self)
+        load_ui(self, "loaderrordialog.ui")
 
-        self.lblError.setText("File '%s' not found." % filepath)
-        QApplication.setOverrideCursor(Qt.ArrowCursor)
+        self.lblError.setText(f"File '{filepath}' not found.")
+        QApplication.setOverrideCursor(Qt.CursorShape.ArrowCursor)
         self.pushButtonBrowse.clicked.connect(self.showBrowserDialog)
 
     def clear(self):
@@ -39,7 +39,7 @@ class LoadErrorDialog(QDialog, Ui_LoadError):
         if not found or not os.path.isdir(bDir):
             bDir = os.path.expanduser("~")
 
-        qDebug(bDir.encode())
+        qDebug(bDir)
         filepath, _ = QFileDialog.getOpenFileName(
             self, "Select image", bDir, "Images (*.png *.bmp *.jpg *.tif *.tiff *.pdf)"
         )
@@ -53,19 +53,19 @@ class LoadErrorDialog(QDialog, Ui_LoadError):
 
     def done(self, ack):
         QApplication.restoreOverrideCursor()
-        super(LoadErrorDialog, self).done(ack)
+        super().done(ack)
 
     def accept(self):
         result, message, details = self.validate()
         if result:
-            self.done(QDialog.Accepted)
+            self.done(QDialog.DialogCode.Accepted)
         else:
             msgBox = QMessageBox()
             msgBox.setWindowTitle("Error")
             msgBox.setText(message)
             msgBox.setDetailedText(details)
-            msgBox.setStandardButtons(QMessageBox.Ok)
-            msgBox.exec_()
+            msgBox.setStandardButtons(QMessageBox.StandardButton.Ok)
+            msgBox.exec()
 
     def validate(self):
         result = True

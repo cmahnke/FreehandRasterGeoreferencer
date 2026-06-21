@@ -11,12 +11,11 @@
 
 import os.path
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QAction, QDialog, QDoubleSpinBox
-from qgis.core import QgsApplication, QgsMapLayer, QgsProject
+from qgis.core import Qgis, QgsApplication, QgsProject
+from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtGui import QAction, QIcon
+from qgis.PyQt.QtWidgets import QDialog, QDoubleSpinBox
 
-from . import resources_rc  # noqa
 from .exportgeorefrasterdialog import ExportGeorefRasterDialog
 from .freehandrastergeoreferencer_commands import ExportGeorefRasterCommand
 from .freehandrastergeoreferencer_layer import (
@@ -31,10 +30,10 @@ from .freehandrastergeoreferencer_maptools import (
     ScaleRasterMapTool,
 )
 from .freehandrastergeoreferencerdialog import FreehandRasterGeoreferencerDialog
+from .icons import icon_path
 
 
-class FreehandRasterGeoreferencer(object):
-
+class FreehandRasterGeoreferencer:
     PLUGIN_MENU = "&Freehand Raster Georeferencer"
 
     def __init__(self, iface):
@@ -47,28 +46,24 @@ class FreehandRasterGeoreferencer(object):
     def initGui(self):
         # Create actions
         self.actionAddLayer = QAction(
-            QIcon(":/plugins/freehandrastergeoreferencer/iconAdd.png"),
+            QIcon(icon_path("iconAdd.png")),
             "Add raster for interactive georeferencing",
             self.iface.mainWindow(),
         )
-        self.actionAddLayer.setObjectName(
-            "FreehandRasterGeoreferencingLayerPlugin_AddLayer"
-        )
+        self.actionAddLayer.setObjectName("FreehandRasterGeoreferencingLayerPlugin_AddLayer")
         self.actionAddLayer.triggered.connect(self.addLayer)
 
         self.actionMoveRaster = QAction(
-            QIcon(":/plugins/freehandrastergeoreferencer/iconMove.png"),
+            QIcon(icon_path("iconMove.png")),
             "Move raster",
             self.iface.mainWindow(),
         )
-        self.actionMoveRaster.setObjectName(
-            "FreehandRasterGeoreferencingLayerPlugin_MoveRaster"
-        )
+        self.actionMoveRaster.setObjectName("FreehandRasterGeoreferencingLayerPlugin_MoveRaster")
         self.actionMoveRaster.triggered.connect(self.moveRaster)
         self.actionMoveRaster.setCheckable(True)
 
         self.actionRotateRaster = QAction(
-            QIcon(":/plugins/freehandrastergeoreferencer/iconRotate.png"),
+            QIcon(icon_path("iconRotate.png")),
             "Rotate raster",
             self.iface.mainWindow(),
         )
@@ -79,18 +74,16 @@ class FreehandRasterGeoreferencer(object):
         self.actionRotateRaster.setCheckable(True)
 
         self.actionScaleRaster = QAction(
-            QIcon(":/plugins/freehandrastergeoreferencer/iconScale.png"),
+            QIcon(icon_path("iconScale.png")),
             "Scale raster",
             self.iface.mainWindow(),
         )
-        self.actionScaleRaster.setObjectName(
-            "FreehandRasterGeoreferencingLayerPlugin_ScaleRaster"
-        )
+        self.actionScaleRaster.setObjectName("FreehandRasterGeoreferencingLayerPlugin_ScaleRaster")
         self.actionScaleRaster.triggered.connect(self.scaleRaster)
         self.actionScaleRaster.setCheckable(True)
 
         self.actionAdjustRaster = QAction(
-            QIcon(":/plugins/freehandrastergeoreferencer/iconAdjust.png"),
+            QIcon(icon_path("iconAdjust.png")),
             "Adjust sides of raster",
             self.iface.mainWindow(),
         )
@@ -101,7 +94,7 @@ class FreehandRasterGeoreferencer(object):
         self.actionAdjustRaster.setCheckable(True)
 
         self.actionGeoref2PRaster = QAction(
-            QIcon(":/plugins/freehandrastergeoreferencer/icon2Points.png"),
+            QIcon(icon_path("icon2Points.png")),
             "Georeference raster with 2 points",
             self.iface.mainWindow(),
         )
@@ -112,9 +105,7 @@ class FreehandRasterGeoreferencer(object):
         self.actionGeoref2PRaster.setCheckable(True)
 
         self.actionIncreaseTransparency = QAction(
-            QIcon(
-                ":/plugins/freehandrastergeoreferencer/" "iconTransparencyIncrease.png"
-            ),
+            QIcon(icon_path("iconTransparencyIncrease.png")),
             "Increase transparency",
             self.iface.mainWindow(),
         )
@@ -122,9 +113,7 @@ class FreehandRasterGeoreferencer(object):
         self.actionIncreaseTransparency.setShortcut("Alt+Ctrl+N")
 
         self.actionDecreaseTransparency = QAction(
-            QIcon(
-                ":/plugins/freehandrastergeoreferencer/" "iconTransparencyDecrease.png"
-            ),
+            QIcon(icon_path("iconTransparencyDecrease.png")),
             "Decrease transparency",
             self.iface.mainWindow(),
         )
@@ -132,15 +121,15 @@ class FreehandRasterGeoreferencer(object):
         self.actionDecreaseTransparency.setShortcut("Alt+Ctrl+B")
 
         self.actionExport = QAction(
-            QIcon(":/plugins/freehandrastergeoreferencer/iconExport.png"),
+            QIcon(icon_path("iconExport.png")),
             "Export raster with world file",
             self.iface.mainWindow(),
         )
         self.actionExport.triggered.connect(self.exportGeorefRaster)
 
         self.actionUndo = QAction(
-            QIcon(":/plugins/freehandrastergeoreferencer/iconUndo.png"),
-            u"Undo",
+            QIcon(icon_path("iconUndo.png")),
+            "Undo",
             self.iface.mainWindow(),
         )
         self.actionUndo.triggered.connect(self.undo)
@@ -162,7 +151,7 @@ class FreehandRasterGeoreferencer(object):
         self.spinBoxRotate.setObjectName("FreehandRasterGeoreferencer_spinbox")
         self.spinBoxRotate.setKeyboardTracking(False)
         self.spinBoxRotate.valueChanged.connect(self.spinBoxRotateValueChangeEvent)
-        self.spinBoxRotate.setFocusPolicy(Qt.ClickFocus)
+        self.spinBoxRotate.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
         self.spinBoxRotate.focusInEvent = self.spinBoxRotateFocusInEvent
 
         # create toolbar for this plugin
@@ -231,7 +220,7 @@ class FreehandRasterGeoreferencer(object):
         layer = self.iface.activeLayer()
         if (
             layer
-            and layer.type() == QgsMapLayer.PluginLayer
+            and layer.type() == Qgis.LayerType.Plugin
             and layer.pluginLayerType() == FreehandRasterGeoreferencerLayer.LAYER_TYPE
         ):
             self.actionMoveRaster.setEnabled(True)
@@ -285,8 +274,8 @@ class FreehandRasterGeoreferencer(object):
     def addLayer(self):
         self.dialogAddLayer.clear(self.layer)
         self.dialogAddLayer.show()
-        result = self.dialogAddLayer.exec_()
-        if result == QDialog.Accepted:
+        result = self.dialogAddLayer.exec()
+        if result == QDialog.DialogCode.Accepted:
             self.createFreehandRasterGeoreferencerLayer()
         elif result == FreehandRasterGeoreferencerDialog.REPLACE:
             self.replaceImage()
@@ -308,9 +297,7 @@ class FreehandRasterGeoreferencer(object):
         imageName, _ = os.path.splitext(os.path.basename(imagePath))
         screenExtent = self.iface.mapCanvas().extent()
 
-        layer = FreehandRasterGeoreferencerLayer(
-            self, imagePath, imageName, screenExtent
-        )
+        layer = FreehandRasterGeoreferencerLayer(self, imagePath, imageName, screenExtent)
         if layer.isValid():
             QgsProject.instance().addMapLayer(layer)
             self.layers[layer.id()] = layer
@@ -364,8 +351,8 @@ class FreehandRasterGeoreferencer(object):
         layer = self.iface.activeLayer()
         self.dialogExportGeorefRaster.clear(layer)
         self.dialogExportGeorefRaster.show()
-        result = self.dialogExportGeorefRaster.exec_()
-        if result == 1:
+        result = self.dialogExportGeorefRaster.exec()
+        if result == QDialog.DialogCode.Accepted:
             exportCommand = ExportGeorefRasterCommand(self.iface)
             exportCommand.exportGeorefRaster(
                 layer,

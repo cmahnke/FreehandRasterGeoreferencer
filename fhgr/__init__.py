@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 /***************************************************************************
  FreehandRasterGeoreferencer
@@ -22,4 +21,5 @@
 
 def classFactory(iface):
     from .freehandrastergeoreferencer import FreehandRasterGeoreferencer
+
     return FreehandRasterGeoreferencer(iface)

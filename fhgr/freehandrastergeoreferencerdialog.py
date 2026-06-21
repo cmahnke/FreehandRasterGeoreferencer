@@ -11,20 +11,21 @@
 
 import os.path
 
-from PyQt5.QtWidgets import QAction, QDialog, QFileDialog, QMenu, QMessageBox
 from qgis.core import QgsProject
+from qgis.PyQt.QtGui import QAction
+from qgis.PyQt.QtWidgets import QDialog, QFileDialog, QMenu, QMessageBox
 
 from . import utils
-from .ui_freehandrastergeoreferencer import Ui_FreehandRasterGeoreferencer
+from .qt_ui import load_ui
 
 
-class FreehandRasterGeoreferencerDialog(QDialog, Ui_FreehandRasterGeoreferencer):
+class FreehandRasterGeoreferencerDialog(QDialog):
     REPLACE = 2
     DUPLICATE = 3
 
     def __init__(self):
         QDialog.__init__(self)
-        self.setupUi(self)
+        load_ui(self, "freehandrastergeoreferencerdialog.ui")
         self.configureAdvancedMenu()
         self.pushButtonAdd.clicked.connect(self.addNew)
         self.pushButtonCancel.clicked.connect(self.reject)
@@ -83,7 +84,7 @@ class FreehandRasterGeoreferencerDialog(QDialog, Ui_FreehandRasterGeoreferencer)
     def addNew(self):
         self.accept()
 
-    def accept(self, retValue=QDialog.Accepted, validate=True):
+    def accept(self, retValue=QDialog.DialogCode.Accepted, validate=True):
         if not validate:
             self.done(retValue)
             return
@@ -96,8 +97,8 @@ class FreehandRasterGeoreferencerDialog(QDialog, Ui_FreehandRasterGeoreferencer)
             msgBox.setWindowTitle("Error")
             msgBox.setText(message)
             msgBox.setDetailedText(details)
-            msgBox.setStandardButtons(QMessageBox.Ok)
-            msgBox.exec_()
+            msgBox.setStandardButtons(QMessageBox.StandardButton.Ok)
+            msgBox.exec()
 
     def validate(self):
         result = True

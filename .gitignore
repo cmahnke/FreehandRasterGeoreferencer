@@ -6,9 +6,10 @@ resources_rc.py
 *.project
 *.pydevproject
 *.settings
-fhrgr.zip
+*.zip
 __pycache__
 .vscode
 .env
+.venv
 .python-version
 test_data

@@ -11,15 +11,15 @@
 
 import os.path
 
-from PyQt5.QtWidgets import QDialog, QFileDialog, QMessageBox
+from qgis.PyQt.QtWidgets import QDialog, QFileDialog, QMessageBox
 
-from .ui_exportgeorefrasterdialog import Ui_ExportGeorefRasterDialog
+from .qt_ui import load_ui
 
 
-class ExportGeorefRasterDialog(QDialog, Ui_ExportGeorefRasterDialog):
+class ExportGeorefRasterDialog(QDialog):
     def __init__(self):
         QDialog.__init__(self)
-        self.setupUi(self)
+        load_ui(self, "exportgeorefrasterdialog.ui")
 
         self.pushButtonBrowse.clicked.connect(self.showBrowserDialog)
         self.checkBoxOnlyWorldFile.stateChanged.connect(self.setupOnlyWorldFile)
@@ -35,16 +35,12 @@ class ExportGeorefRasterDialog(QDialog, Ui_ExportGeorefRasterDialog):
 
     def setupOnlyWorldFile(self):
         if self.checkBoxOnlyWorldFile.isChecked():
-            self._originalCheckBoxRotationModeChecked = (
-                self.checkBoxRotationMode.isChecked()
-            )
+            self._originalCheckBoxRotationModeChecked = self.checkBoxRotationMode.isChecked()
             self.checkBoxRotationMode.setChecked(True)
             self.checkBoxRotationMode.setEnabled(False)
 
         else:
-            self.checkBoxRotationMode.setChecked(
-                self._originalCheckBoxRotationModeChecked
-            )
+            self.checkBoxRotationMode.setChecked(self._originalCheckBoxRotationModeChecked)
             self.checkBoxRotationMode.setEnabled(True)
 
     def showBrowserDialog(self):
@@ -74,14 +70,14 @@ class ExportGeorefRasterDialog(QDialog, Ui_ExportGeorefRasterDialog):
     def accept(self):
         result, message, details = self.validate()
         if result:
-            self.done(QDialog.Accepted)
+            self.done(QDialog.DialogCode.Accepted)
         else:
             msgBox = QMessageBox()
             msgBox.setWindowTitle("Error")
             msgBox.setText(message)
             msgBox.setDetailedText(details)
-            msgBox.setStandardButtons(QMessageBox.Ok)
-            msgBox.exec_()
+            msgBox.setStandardButtons(QMessageBox.StandardButton.Ok)
+            msgBox.exec()
 
     def validate(self):
         result = True

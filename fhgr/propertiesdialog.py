@@ -9,23 +9,22 @@
  ***************************************************************************/
 """
 
-from PyQt5.QtWidgets import QDialog
+from qgis.PyQt.QtWidgets import QDialog
 
-from .ui_propertiesdialog import Ui_Dialog
+from .qt_ui import load_ui
 
 
-class PropertiesDialog(QDialog, Ui_Dialog):
+class PropertiesDialog(QDialog):
     def __init__(self, layer):
         QDialog.__init__(self)
-        # set up the user interface
-        self.setupUi(self)
-        self.setWindowTitle("%s - %s" % (self.tr("Layer Properties"), layer.name()))
+        load_ui(self, "propertiesdialog.ui")
+        self.setWindowTitle(f"{self.tr('Layer Properties')} - {layer.name()}")
 
         self.layer = layer
         self.horizontalSlider_Transparency.valueChanged.connect(self.sliderChanged)
         self.spinBox_Transparency.valueChanged.connect(self.spinBoxChanged)
 
-        self.textEdit_Properties.setText(layer.metadata())
+        self.textEdit_Properties.setText(layer.freehand_metadata())
         self.spinBox_Transparency.setValue(layer.transparency)
 
     def sliderChanged(self, val):

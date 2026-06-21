@@ -11,8 +11,8 @@
 
 import os.path
 
-from PyQt5.QtCore import qDebug
 from qgis.core import QgsProject
+from qgis.PyQt.QtCore import qDebug
 
 # constants for saving data inside QGS
 SETTINGS_KEY = "FreehandRasterGeoreferencer"
@@ -32,7 +32,7 @@ def toRelativeToQGS(imagePath):
             # relative
             imageFolderRelPath = os.path.relpath(imageFolder, qgsFolder)
             imagePath = os.path.join(imageFolderRelPath, imageName)
-            qDebug(imagePath.encode())
+            qDebug(imagePath)
 
     return imagePath
 

@@ -1,0 +1,55 @@
+[project]
+name = "freehand-raster-georeferencer"
+version = "0.9.0"
+description = "QGIS plugin for interactive raster georeferencing"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.0",
+    "qgis-plugin-ci>=2.10.0",
+    "ruff>=0.12.0",
+    "taskipy>=1.14.0",
+]
+
+[tool.qgis-plugin-ci]
+plugin_path = "fhgr"
+github_organization_slug = "gvellut"
+project_slug = "FreehandRasterGeoreferencer"
+
+[tool.taskipy.tasks]
+lint = "ruff check ."
+format-check = "ruff format --check ."
+test = "pytest"
+package = "qgis-plugin-ci package 0.9.0 --allow-uncommitted-changes --disable-submodule-update"
+
+[tool.pytest.ini_options]
+pythonpath = [
+    ".",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = [
+    ".prompts",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "I",
+    "UP",
+    "B",
+]
+ignore = [
+    "E501",
+]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+force-sort-within-sections = true
+order-by-type = true

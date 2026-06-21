@@ -1,0 +1,59 @@
+name: Plugin
+
+on:
+  push:
+  pull_request:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8
+        with:
+          enable-cache: true
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Lint
+        run: uv run task lint
+
+      - name: Test
+        run: uv run task test
+
+      - name: Package
+        if: github.event_name != 'release'
+        run: uv run task package
+
+      - name: Upload package artifact
+        if: github.event_name != 'release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: fhgr
+          path: "*.zip"
+
+      - name: Release plugin
+        if: github.event_name == 'release'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          QGIS_PLUGIN_TOKEN: ${{ secrets.QGIS_PLUGIN_TOKEN }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          VERSION="${RELEASE_TAG#v}"
+          uv run qgis-plugin-ci release "$VERSION" \
+            --release-tag "$RELEASE_TAG" \
+            --github-token "$GITHUB_TOKEN" \
+            --qgis-token "$QGIS_PLUGIN_TOKEN" \
+            --disable-submodule-update
