@@ -1,0 +1,1 @@
+Also I would like to replace the TIFF stryling with a standard companion layer : normal QGIS style would apply to it and my plugin layer would reuse its style (instead of the simple styling that is there now) . 
