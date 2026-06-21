@@ -1,0 +1,37 @@
+# AGENTS.md
+
+## Project
+
+This project is a QGIS 4 plugin for interactive raster georeferencing. 
+
+The plugin package lives in `fhgr/`; keep plugin code, `metadata.txt`, `.ui` files, and icons there.
+
+## Commands
+
+- Install tooling: `uv sync --frozen`
+- Lint: `uv run task lint`
+- Format check: `uv run task format-check`
+- Tests: `uv run task test`
+- Package: `uv run task package`
+
+`qgis-plugin-ci` packages from Git-tracked files. If `fhgr/` is new or
+unstaged, package verification may need a temporary clean Git repo.
+
+## QGIS 4 Rules
+
+- Do not maintain QGIS 3 or Qt 5 compatibility.
+- Use `qgis.PyQt`, not direct `PyQt5` or `PyQt6` imports.
+- Use Qt 6 scoped enums, for example `Qt.FocusPolicy.ClickFocus`,
+  `Qt.MouseButton.LeftButton`, `Qt.KeyboardModifier.ControlModifier`,
+  `Qgis.MessageLevel.Warning`, and `Qgis.GeometryType.Line`.
+- Use `exec()`, not `exec_()`.
+- Use `event.position().toPoint()` instead of `event.pos()` for map mouse events.
+- Do not add generated `ui_*.py` or `resources_rc.py`; load `.ui` files at
+  runtime with `qgis.PyQt.uic.loadUi`.
+- Do not define a string-returning `metadata()` method on plugin layers; QGIS
+  expects `QgsMapLayer.metadata()` to return `QgsLayerMetadata`.
+
+## Notes
+
+- The active Ruff config is `ruff.toml`; keep `pyproject.toml` aligned with it.
+- Keep `.prompts/` untouched unless explicitly asked.
