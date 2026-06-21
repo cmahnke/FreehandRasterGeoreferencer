@@ -1,11 +1,10 @@
 name: Plugin
 
+
 on:
-  push:
-  pull_request:
-  release:
-    types:
-      - published
+    push:
+        tags:
+            - prod*
 
 permissions:
   contents: write
@@ -19,7 +18,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v8
+        uses: astral-sh/setup-uv@v8.2.0
         with:
           enable-cache: true
           python-version: "3.12"
@@ -34,24 +33,21 @@ jobs:
         run: uv run task test
 
       - name: Package
-        if: github.event_name != 'release'
         run: uv run task package
 
       - name: Upload package artifact
-        if: github.event_name != 'release'
         uses: actions/upload-artifact@v4
         with:
           name: fhgr
           path: "*.zip"
 
       - name: Release plugin
-        if: github.event_name == 'release'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           QGIS_PLUGIN_TOKEN: ${{ secrets.QGIS_PLUGIN_TOKEN }}
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          VERSION="${RELEASE_TAG#v}"
+          VERSION="$(uv version --short)"
           uv run qgis-plugin-ci release "$VERSION" \
             --release-tag "$RELEASE_TAG" \
             --github-token "$GITHUB_TOKEN" \
