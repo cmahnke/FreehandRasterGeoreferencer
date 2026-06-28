@@ -16,7 +16,7 @@ from qgis.PyQt.QtCore import Qt, qDebug
 from qgis.PyQt.QtWidgets import QApplication, QDialog, QFileDialog, QMessageBox
 
 from . import utils
-from .qt_ui import load_ui
+from .qt_ui import adjust_dialog_to_content, configure_message_box, load_ui
 
 
 class LoadErrorDialog(QDialog):
@@ -24,9 +24,14 @@ class LoadErrorDialog(QDialog):
         QDialog.__init__(self)
         load_ui(self, "loaderrordialog.ui")
 
-        self.lblError.setText(f"File '{filepath}' not found.")
+        self.lblError.setText(
+            f"The raster image could not be found:\n{filepath}\n\n"
+            "Choose the replacement image below."
+        )
+        self.lineEditImagePath.setPlaceholderText("Replacement image path")
         QApplication.setOverrideCursor(Qt.CursorShape.ArrowCursor)
         self.pushButtonBrowse.clicked.connect(self.showBrowserDialog)
+        adjust_dialog_to_content(self, min_text_columns=72)
 
     def clear(self):
         self.lineEditImagePath.setText("")
@@ -44,6 +49,7 @@ class LoadErrorDialog(QDialog):
             self, "Select image", bDir, "Images (*.png *.bmp *.jpg *.tif *.tiff *.pdf)"
         )
         self.lineEditImagePath.setText(filepath)
+        self.lineEditImagePath.setToolTip(filepath)
 
         if filepath:
             bDir, _ = os.path.split(filepath)
@@ -65,6 +71,7 @@ class LoadErrorDialog(QDialog):
             msgBox.setText(message)
             msgBox.setDetailedText(details)
             msgBox.setStandardButtons(QMessageBox.StandardButton.Ok)
+            configure_message_box(msgBox)
             msgBox.exec()
 
     def validate(self):

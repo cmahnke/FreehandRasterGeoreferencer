@@ -16,7 +16,7 @@ from qgis.PyQt.QtGui import QAction
 from qgis.PyQt.QtWidgets import QDialog, QFileDialog, QMenu, QMessageBox
 
 from . import utils
-from .qt_ui import load_ui
+from .qt_ui import adjust_dialog_to_content, configure_message_box, load_ui
 
 
 class FreehandRasterGeoreferencerDialog(QDialog):
@@ -26,6 +26,7 @@ class FreehandRasterGeoreferencerDialog(QDialog):
     def __init__(self):
         QDialog.__init__(self)
         load_ui(self, "freehandrastergeoreferencerdialog.ui")
+        adjust_dialog_to_content(self)
         self.configureAdvancedMenu()
         self.pushButtonAdd.clicked.connect(self.addNew)
         self.pushButtonCancel.clicked.connect(self.reject)
@@ -40,6 +41,8 @@ class FreehandRasterGeoreferencerDialog(QDialog):
             imagepath = layer.filepath
 
         self.lineEditImagePath.setText(imagepath)
+        self.lineEditImagePath.setToolTip(imagepath)
+        adjust_dialog_to_content(self)
 
     def showBrowserDialog(self):
         bDir, found = QgsProject.instance().readEntry(
@@ -54,6 +57,7 @@ class FreehandRasterGeoreferencerDialog(QDialog):
 
         if filepath:
             self.lineEditImagePath.setText(filepath)
+            self.lineEditImagePath.setToolTip(filepath)
             bDir, _ = os.path.split(filepath)
             QgsProject.instance().writeEntry(
                 utils.SETTINGS_KEY, utils.SETTING_BROWSER_RASTER_DIR, bDir
@@ -98,6 +102,7 @@ class FreehandRasterGeoreferencerDialog(QDialog):
             msgBox.setText(message)
             msgBox.setDetailedText(details)
             msgBox.setStandardButtons(QMessageBox.StandardButton.Ok)
+            configure_message_box(msgBox)
             msgBox.exec()
 
     def validate(self):

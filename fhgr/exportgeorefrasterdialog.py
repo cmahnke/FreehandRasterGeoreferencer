@@ -13,25 +13,28 @@ import os.path
 
 from qgis.PyQt.QtWidgets import QDialog, QFileDialog, QMessageBox
 
-from .qt_ui import load_ui
+from .qt_ui import adjust_dialog_to_content, configure_message_box, load_ui
 
 
 class ExportGeorefRasterDialog(QDialog):
     def __init__(self):
         QDialog.__init__(self)
         load_ui(self, "exportgeorefrasterdialog.ui")
+        adjust_dialog_to_content(self)
 
         self.pushButtonBrowse.clicked.connect(self.showBrowserDialog)
         self.checkBoxOnlyWorldFile.stateChanged.connect(self.setupOnlyWorldFile)
 
     def clear(self, layer):
         self.lineEditImagePath.setText("")
+        self.lineEditImagePath.setToolTip("")
         self.checkBoxRotationMode.setChecked(False)
         self.checkBoxRotationMode.setEnabled(True)
         self.checkBoxOnlyWorldFile.setChecked(False)
 
         defaultPath, _ = os.path.splitext(layer.filepath)
         self.defaultPath = defaultPath + "_georeferenced.png"
+        self.lineEditImagePath.setPlaceholderText(self.defaultPath)
 
     def setupOnlyWorldFile(self):
         if self.checkBoxOnlyWorldFile.isChecked():
@@ -70,6 +73,7 @@ class ExportGeorefRasterDialog(QDialog):
 
         if filepath:
             self.lineEditImagePath.setText(filepath)
+            self.lineEditImagePath.setToolTip(filepath)
 
     def accept(self):
         result, message, details = self.validate()
@@ -81,6 +85,7 @@ class ExportGeorefRasterDialog(QDialog):
             msgBox.setText(message)
             msgBox.setDetailedText(details)
             msgBox.setStandardButtons(QMessageBox.StandardButton.Ok)
+            configure_message_box(msgBox)
             msgBox.exec()
 
     def validate(self):
