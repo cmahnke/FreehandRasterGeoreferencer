@@ -5,9 +5,7 @@
 This plugin should be organized around a small QGIS-facing shell and testable
 core modules. The highest-value correctness change is to stop using Qt image
 readers for raster input and instead use GDAL from the QGIS runtime for all
-raster loading. In parallel, dialogs should be converted from fixed-position
-widgets to layouts so they scale correctly on HiDPI displays and translated or
-larger system fonts.
+raster loading.
 
 This proposal targets QGIS 4 only. It does not preserve QGIS 3 compatibility.
 
@@ -24,9 +22,6 @@ This proposal targets QGIS 4 only. It does not preserve QGIS 3 compatibility.
 - Several correctness-sensitive calculations are hard to test outside QGIS:
   world-file coefficients, geotransform import, corner coordinates, CRS
   reprojection behavior, undo state, and image data conversion.
-- Dialogs still include fixed widget geometries in `.ui` files. That is fragile
-  for HiDPI scaling and directly matches issue #58:
-  https://github.com/gvellut/FreehandRasterGeoreferencer/issues/58.
 - The plugin still stores display pixels as a `QImage`, which is acceptable for
   painting, but the creation of that `QImage` should be driven by GDAL data and
   explicit conversion rules, not by Qt's file readers.
@@ -36,6 +31,25 @@ This proposal targets QGIS 4 only. It does not preserve QGIS 3 compatibility.
   `filepath`. That is technically how plugin layers are persisted today, but it
   makes project-file diagnosis hard and contributes to user confusion when paths
   break after moving a project.
+
+## Problems to fix at the same time
+
+- Raster loading limits and unsupported formats:
+  [#54](https://github.com/gvellut/FreehandRasterGeoreferencer/issues/54)
+  reports a crash drawing a large raster.
+  [#48](https://github.com/gvellut/FreehandRasterGeoreferencer/issues/48)
+  reports large TIFFs loading with width and height as zero.
+  [#65](https://github.com/gvellut/FreehandRasterGeoreferencer/issues/65)
+  reports some `.jpeg` files not being recognized.
+  [#64](https://github.com/gvellut/FreehandRasterGeoreferencer/issues/64)
+  asks for formats such as ECW that QGIS can open. These all support replacing
+  Qt image reading with GDAL-backed raster access.
+- Existing raster georeferencing:
+  [#61](https://github.com/gvellut/FreehandRasterGeoreferencer/issues/61)
+  reports a TIFF with existing georeferencing not loading usefully and asks for
+  a way to ignore or keep the embedded points. GDAL import should make this an
+  explicit user choice.
+  
 
 ## Open Issue Triage: Bugs and Correctness
 
@@ -47,6 +61,7 @@ This triage only covers issues that are currently open in GitHub.
   report `FreehandRasterGeoreferencerLayer.metadata()` returning a string where
   newer QGIS expects `QgsLayerMetadata`. This is a QGIS API correctness issue,
   not just a tooltip issue, because it can freeze or crash QGIS layout dialogs.
+
 - Missing or relocated source images:
   [#70](https://github.com/gvellut/FreehandRasterGeoreferencer/issues/70),
   [#66](https://github.com/gvellut/FreehandRasterGeoreferencer/issues/66),
@@ -63,29 +78,14 @@ This triage only covers issues that are currently open in GitHub.
   describe wrong locations, absolute/relative path confusion, and crashes when
   reloading projects. This should be tested with relative paths, absolute paths,
   moved projects, and CRS changes.
+
 - CRS and transform lifecycle:
   [#60](https://github.com/gvellut/FreehandRasterGeoreferencer/issues/60)
   reports `_extent` access before initialization during CRS handling.
   [#34](https://github.com/gvellut/FreehandRasterGeoreferencer/issues/34)
   reports exported rotation being wrong when the QGIS map canvas is rotated.
   Both should be covered by pure transform tests plus QGIS integration tests.
-- Raster loading limits and unsupported formats:
-  [#54](https://github.com/gvellut/FreehandRasterGeoreferencer/issues/54)
-  reports a crash drawing a large raster.
-  [#48](https://github.com/gvellut/FreehandRasterGeoreferencer/issues/48)
-  reports large TIFFs loading with width and height as zero.
-  [#65](https://github.com/gvellut/FreehandRasterGeoreferencer/issues/65)
-  reports some `.jpeg` files not being recognized.
-  [#64](https://github.com/gvellut/FreehandRasterGeoreferencer/issues/64)
-  asks for formats such as ECW that QGIS can open. These all support replacing
-  Qt image reading with GDAL-backed raster access.
-- Export quality and transparency:
-  [#59](https://github.com/gvellut/FreehandRasterGeoreferencer/issues/59)
-  reports export quality loss and 16-bit data being reduced to 8-bit.
-  [#57](https://github.com/gvellut/FreehandRasterGeoreferencer/issues/57) and
-  [#55](https://github.com/gvellut/FreehandRasterGeoreferencer/issues/55)
-  report black or opaque borders around rotated/exported images. Export should
-  preserve alpha/nodata semantics and expose quality/compression choices.
+
 - Map-tool state:
   [#49](https://github.com/gvellut/FreehandRasterGeoreferencer/issues/49)
   reports the 2-point tool failing after the built-in QGIS georeferencer uses
@@ -96,57 +96,15 @@ This triage only covers issues that are currently open in GitHub.
   [#42](https://github.com/gvellut/FreehandRasterGeoreferencer/issues/42)
   also reports map-tool GUI regressions. The active layer and active map-tool
   state need clearer ownership.
-- Dialog scaling:
-  [#58](https://github.com/gvellut/FreehandRasterGeoreferencer/issues/58)
-  reports unreadable dialogs on Windows HiDPI scaling. This is both a usability
-  issue and a correctness issue because the hidden missing-file name can cause
-  users to replace the wrong raster.
 - Toolbar state warning:
   [#68](https://github.com/gvellut/FreehandRasterGeoreferencer/issues/68)
   reports a `QMainWindow::saveState()` warning for a toolbar with no
   `objectName`. The plugin toolbar should set a stable object name.
-- Existing raster georeferencing:
-  [#61](https://github.com/gvellut/FreehandRasterGeoreferencer/issues/61)
-  reports a TIFF with existing georeferencing not loading usefully and asks for
-  a way to ignore or keep the embedded points. GDAL import should make this an
-  explicit user choice.
+- source inconsistency:
+  [#58](https://github.com/gvellut/FreehandRasterGeoreferencer/issues/58)
+  The issue comments also show project XML where plugin layers have `source=""` in the layer tree, while the real image path is stored in custom properties. That should be documented and made more diagnosable in the UI.
 
-## Open Issues Already Fixed or Partially Covered
 
-- [#72](https://github.com/gvellut/FreehandRasterGeoreferencer/issues/72):
-  the QGIS 4 branch no longer overrides `QgsMapLayer.metadata()` with a string
-  helper. The plugin-specific text helper is now `freehand_metadata()`, which
-  should avoid the `str cannot be converted to QgsLayerMetadata` failure. This
-  still needs manual validation in QGIS because the issue is UI-triggered.
-- [#73](https://github.com/gvellut/FreehandRasterGeoreferencer/issues/73):
-  the `metadata()` API-conflict part is covered by the same rename as #72.
-  The remaining risk is that `freehand_metadata()` still reads `self.image`, so
-  invalid or partially initialized layers need a guard before this issue can be
-  considered fully fixed.
-- [#45](https://github.com/gvellut/FreehandRasterGeoreferencer/issues/45):
-  the issue comment says the relative-path part was already corrected in source
-  before this port. The remaining open part is toolbar/map-tool responsiveness.
-
-## Issue #58 Findings
-
-Issue #58 is titled "Dialogs are unreadable with Windows screen scaling!" The
-report describes a Surface Book with a 3000x2000 physical screen scaled by
-Windows 10 to an effective 1500x1000 desktop.
-
-The concrete failures are:
-
-- the missing-file dialog opens too small;
-- the resize handle is hard to grab;
-- resizing the dialog outline does not make all text readable;
-- the missing file name is hidden by the folder/path field;
-- the user may choose the wrong replacement file because the dialog does not
-  clearly show which image is missing;
-- a second error dialog has correctly scaled text but still opens with most of
-  the text hidden until resized.
-
-The issue comments also show project XML where plugin layers have
-`source=""` in the layer tree, while the real image path is stored in custom
-properties. That should be documented and made more diagnosable in the UI.
 
 ## Issue #70 Findings
 
@@ -220,35 +178,6 @@ The expected behavior should be:
    unless "only world file" is selected. A later improvement can use GDAL for
    transformed raster output too.
 
-## HiDPI Dialog Plan
-
-1. Convert all `.ui` files to layout-based designs:
-   - remove fixed child-widget `geometry` blocks;
-   - use `QVBoxLayout`, `QGridLayout`, `QFormLayout`, and `QDialogButtonBox`;
-   - use expanding line edits for file paths;
-   - avoid hard-coded point sizes like the current `Advanced...` button font.
-2. Keep UI files loaded at runtime with `loadUi`.
-3. Set useful dialog constraints after loading:
-   - reasonable minimum width;
-   - no fixed height unless truly necessary;
-   - `adjustSize()` after dynamic text is applied for error dialogs.
-4. Make long text wrap:
-   - missing-file labels, including the full missing raster path;
-   - validation messages;
-   - tooltips and property text areas.
-5. Improve missing-file recovery UX:
-   - show the missing path in a selectable, wrapping text field;
-   - show the layer title separately from the file path;
-   - make the replacement path chooser clearly tied to that missing layer;
-   - validate that replacing a file updates only that plugin layer;
-   - use an error message when the selected file does not match expected image
-     dimensions, unless the user explicitly chooses to replace with a different
-     image.
-6. Add visual/offscreen tests for dialog sizing:
-   - instantiate each dialog with `QT_QPA_PLATFORM=offscreen`;
-   - render at scale factors such as 1.0, 1.5, and 2.0 where available;
-   - assert size hints are sane and no key widgets have zero size;
-   - optionally save screenshots in failed tests for inspection.
 
 ## Testability Plan
 
@@ -298,14 +227,18 @@ The expected behavior should be:
   - no silent division by zero when data min equals max;
   - clear errors for unsupported or unreadable rasters.
 
+- Improve missing-file recovery UX:
+   - show the missing path in a selectable, wrapping text field;
+   - show the layer title separately from the file path;
+   - make the replacement path chooser clearly tied to that missing layer;
+   - validate that replacing a file updates only that plugin layer;
+   - use an error message when the selected file does not match expected image
+     dimensions, unless the user explicitly chooses to replace with a different
+     image.
+
+
 ## Phased Implementation
 
-1. Dialog HiDPI cleanup
-   - Convert `.ui` files to layouts.
-   - Add offscreen dialog tests.
-   - Verify issue #58 class of failures manually in QGIS 4 on HiDPI.
-   - Include a manual Windows check with 200% scaling or equivalent effective
-     scaling, using a project with a missing source image.
 
 2. Pure transform extraction
    - Move coordinate and world-file math into `transform.py`.
@@ -316,6 +249,7 @@ The expected behavior should be:
    - Stop initialization immediately when the user cancels recovery.
    - Add tests for project reload with missing files, cancellation, and
      replacement with same-size and different-size rasters.
+
 
 4. GDAL display reader
    - Implement `raster_io.py` and `qt_image.py`.
@@ -335,10 +269,7 @@ The expected behavior should be:
 ## Acceptance Criteria
 
 - No direct `QImageReader` raster-loading path remains.
-- GDAL handles PNG, JPEG, TIFF, PDF where the QGIS GDAL build supports them.
-- HiDPI dialogs use layouts, not fixed child geometries.
-- The missing-file dialog clearly shows the layer name, full missing path, and
-  replacement path on Windows HiDPI.
+- GDAL handles PNG, JPEG, TIFF, PDF, other raster types like ECW where the QGIS GDAL build supports them.
 - Replacing one missing raster cannot silently update or reposition another
   layer.
 - Opening a project with missing linked images does not crash or block unrelated
