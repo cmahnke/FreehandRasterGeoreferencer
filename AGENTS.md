@@ -31,6 +31,17 @@ unstaged, package verification may need a temporary clean Git repo.
 - Do not define a string-returning `metadata()` method on plugin layers; QGIS
   expects `QgsMapLayer.metadata()` to return `QgsLayerMetadata`.
 
+## HiDPI UI Rules
+
+- Keep `.ui` files layout-based so dialogs scale correctly on HiDPI displays.
+- Do not use fixed child-widget `geometry` blocks; top-level dialog geometry is
+  only an initial designer hint.
+- Prefer Qt layouts such as `QVBoxLayout`, `QGridLayout`, `QFormLayout`, and
+  `QDialogButtonBox`.
+- Use expanding line edits for file paths and make long explanatory text wrap.
+- Avoid hard-coded point sizes in `.ui` files; use the platform/application font
+  unless there is a strong reason otherwise.
+
 ## Notes
 
 - The active Ruff config is `ruff.toml`; keep `pyproject.toml` aligned with it.
