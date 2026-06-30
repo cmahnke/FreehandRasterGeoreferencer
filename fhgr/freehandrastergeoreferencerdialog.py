@@ -17,6 +17,7 @@ from qgis.PyQt.QtWidgets import QDialog, QFileDialog, QMenu, QMessageBox
 
 from . import utils
 from .qt_ui import adjust_dialog_to_content, configure_message_box, load_ui
+from .raster_io import RasterLoadError, probe_raster_size
 
 
 class FreehandRasterGeoreferencerDialog(QDialog):
@@ -48,11 +49,15 @@ class FreehandRasterGeoreferencerDialog(QDialog):
         bDir, found = QgsProject.instance().readEntry(
             utils.SETTINGS_KEY, utils.SETTING_BROWSER_RASTER_DIR, None
         )
-        if not found:
+        if not found or not bDir or not os.path.isdir(bDir):
             bDir = os.path.expanduser("~")
 
         filepath, _ = QFileDialog.getOpenFileName(
-            self, "Select image", bDir, "Images (*.png *.bmp *.jpg *.tif *.tiff *.pdf)"
+            self,
+            "Select raster",
+            bDir,
+            "Rasters (*.png *.bmp *.jpg *.jpeg *.tif *.tiff *.pdf *.jp2 *.ecw);;"
+            "All files (*)",
         )
 
         if filepath:
@@ -111,15 +116,17 @@ class FreehandRasterGeoreferencerDialog(QDialog):
         details = ""
 
         self.imagePath = self.lineEditImagePath.text()
-        _, extension = os.path.splitext(self.imagePath)
-        extension = extension.lower()
-        if not os.path.isfile(self.imagePath) or (
-            extension not in [".jpg", ".bmp", ".png", ".tif", ".tiff", ".pdf"]
-        ):
+        if not os.path.isfile(self.imagePath):
             result = False
-            if len(details) > 0:
-                details += "\n"
             details += "The path must be an image file"
+        else:
+            try:
+                probe_raster_size(self.imagePath)
+            except RasterLoadError as ex:
+                result = False
+                if len(details) > 0:
+                    details += "\n"
+                details += str(ex)
 
         if not result:
             message = "There were errors in the form"

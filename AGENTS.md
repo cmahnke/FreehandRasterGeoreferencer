@@ -46,3 +46,7 @@ unstaged, package verification may need a temporary clean Git repo.
 
 - The active Ruff config is `ruff.toml`; keep `pyproject.toml` aligned with it.
 - Keep `.prompts/` untouched unless explicitly asked.
+
+## Considerations
+
+This is not a library, but a self-contained program. Do no maintain code compatibility between versions. Do not redirect code so the interface is maintained. Interface does not need to be maintained.

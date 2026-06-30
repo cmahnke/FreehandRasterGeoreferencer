@@ -17,17 +17,35 @@ from qgis.PyQt.QtWidgets import QApplication, QDialog, QFileDialog, QMessageBox
 
 from . import utils
 from .qt_ui import adjust_dialog_to_content, configure_message_box, load_ui
+from .raster_io import RasterLoadError, probe_raster_size
 
 
 class LoadErrorDialog(QDialog):
-    def __init__(self, filepath):
+    def __init__(self, layer_title, filepath=None, expected_size=None):
         QDialog.__init__(self)
         load_ui(self, "loaderrordialog.ui")
 
-        self.lblError.setText(
-            f"The raster image could not be found:\n{filepath}\n\n"
-            "Choose the replacement image below."
-        )
+        if filepath is None:
+            filepath = layer_title
+            layer_title = ""
+
+        self.expected_size = expected_size
+        self.lblError.setText("The raster image for this layer could not be found.")
+        self.lineEditLayerTitle.setText(layer_title)
+        self.lineEditLayerTitle.setToolTip(layer_title)
+        self.lineEditMissingPath.setText(filepath)
+        self.lineEditMissingPath.setToolTip(filepath)
+        if expected_size is not None:
+            self.lblExpectedSize.setText(
+                "Expected replacement dimensions: "
+                f"{expected_size[0]} x {expected_size[1]} pixels."
+            )
+            self.checkBoxAllowDifferentDimensions.setVisible(True)
+        else:
+            self.lblExpectedSize.setText(
+                "No saved image dimensions are available for this layer."
+            )
+            self.checkBoxAllowDifferentDimensions.setVisible(False)
         self.lineEditImagePath.setPlaceholderText("Replacement image path")
         QApplication.setOverrideCursor(Qt.CursorShape.ArrowCursor)
         self.pushButtonBrowse.clicked.connect(self.showBrowserDialog)
@@ -41,12 +59,16 @@ class LoadErrorDialog(QDialog):
             utils.SETTINGS_KEY, utils.SETTING_BROWSER_RASTER_DIR, None
         )
 
-        if not found or not os.path.isdir(bDir):
+        if not found or not bDir or not os.path.isdir(bDir):
             bDir = os.path.expanduser("~")
 
         qDebug(bDir)
         filepath, _ = QFileDialog.getOpenFileName(
-            self, "Select image", bDir, "Images (*.png *.bmp *.jpg *.tif *.tiff *.pdf)"
+            self,
+            "Select replacement raster",
+            bDir,
+            "Rasters (*.png *.bmp *.jpg *.jpeg *.tif *.tiff *.pdf *.jp2 *.ecw);;"
+            "All files (*)",
         )
         self.lineEditImagePath.setText(filepath)
         self.lineEditImagePath.setToolTip(filepath)
@@ -80,15 +102,33 @@ class LoadErrorDialog(QDialog):
         details = ""
 
         self.imagePath = self.lineEditImagePath.text()
-        _, extension = os.path.splitext(self.imagePath)
-        extension = extension.lower()
-        if not os.path.isfile(self.imagePath) or (
-            extension not in [".jpg", ".bmp", ".png", ".tif", ".tiff", ".pdf"]
-        ):
+        if not os.path.isfile(self.imagePath):
             result = False
-            if len(details) > 0:
-                details += "\n"
             details += "The path must be an image file"
+        else:
+            try:
+                width, height = probe_raster_size(self.imagePath)
+            except RasterLoadError as ex:
+                result = False
+                if len(details) > 0:
+                    details += "\n"
+                details += str(ex)
+            else:
+                if (
+                    self.expected_size is not None
+                    and (width, height) != self.expected_size
+                    and not self.checkBoxAllowDifferentDimensions.isChecked()
+                ):
+                    result = False
+                    if len(details) > 0:
+                        details += "\n"
+                    details += (
+                        "The replacement image dimensions are "
+                        f"{width} x {height} pixels, but this layer expects "
+                        f"{self.expected_size[0]} x {self.expected_size[1]} pixels. "
+                        "Enable the different-dimensions checkbox to replace it "
+                        "anyway."
+                    )
 
         if not result:
             message = "There were errors in the form"

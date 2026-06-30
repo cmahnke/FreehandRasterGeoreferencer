@@ -9,11 +9,8 @@
  ***************************************************************************/
 """
 
-import math
 import os
 
-import numpy as np
-from osgeo import gdal
 from qgis.core import (
     Qgis,
     QgsCoordinateReferenceSystem,
@@ -25,24 +22,15 @@ from qgis.core import (
     QgsPluginLayerType,
     QgsPointXY,
     QgsProject,
-    QgsRasterLayer,
     QgsRectangle,
 )
-from qgis.PyQt.QtCore import (
-    QFileInfo,
-    QPointF,
-    QRectF,
-    QSettings,
-    QSize,
-    Qt,
-    pyqtSignal,
-    qDebug,
-)
-from qgis.PyQt.QtGui import QColor, QImage, QImageReader, QPainter, QPen
+from qgis.PyQt.QtCore import QPointF, QRectF, Qt, pyqtSignal, qDebug
+from qgis.PyQt.QtGui import QColor, QPainter, QPen
 from qgis.PyQt.QtWidgets import QDialog
 
-from . import gdal_utils, utils
+from . import transform as transform_math, utils
 from .loaderrordialog import LoadErrorDialog
+from .raster_io import RasterLoadError, load_raster_for_display
 
 
 class LayerDefaultSettings:
@@ -80,11 +68,16 @@ class FreehandRasterGeoreferencerLayer(QgsPluginLayer):
         self.xScale = 1.0
         self.yScale = 1.0
 
+        self.image = None
+        self._raster_display = None
+        self.raster_warnings = []
+        self.load_error = ""
+        self._extent = None
+
         self.error = False
         self.initializing = False
         self.initialized = False
         self.initializeLayer(screenExtent)
-        self._extent = None
 
         self.provider = FreehandRasterGeoreferencerLayerProvider(self)
 
@@ -186,156 +179,108 @@ class FreehandRasterGeoreferencerLayer(QgsPluginLayer):
         if self.error or self.initialized or self.initializing:
             return
 
-        if self.filepath is not None:
-            # not safe...
-            self.initializing = True
+        if self.filepath is None:
+            return
+
+        self.initializing = True
+        try:
             absPath = self.getAbsoluteFilepath()
+            replacement_filepath = None
 
             if not os.path.exists(absPath):
-                # TODO integrate with BadLayerHandler ?
-                loadErrorDialog = LoadErrorDialog(absPath)
+                loadErrorDialog = LoadErrorDialog(
+                    self.title, absPath, self.expectedImageSize()
+                )
                 result = loadErrorDialog.exec()
                 if result == QDialog.DialogCode.Accepted:
-                    # absolute
                     absPath = loadErrorDialog.lineEditImagePath.text()
-                    # to relative if needed
-                    self.filepath = utils.toRelativeToQGS(absPath)
-                    self.setCustomProperty("filepath", self.filepath)
-                    QgsProject.instance().setDirty(True)
+                    replacement_filepath = utils.toRelativeToQGS(absPath)
                 else:
+                    self.load_error = f"Raster image was not found: {absPath}"
                     self.error = True
+                    self.setValid(False)
+                    return
 
                 del loadErrorDialog
 
-            imageFormat = utils.imageFormat(absPath)
-            if imageFormat == "pdf":
-                s = QSettings()
-                oldValidation = s.value("/Projections/defaultBehavior")
-                s.setValue(
-                    "/Projections/defaultBehavior", "useGlobal"
-                )  # for not asking about crs
-                layer = QgsRasterLayer(absPath, os.path.basename(absPath))
-                self.image = layer.previewAsImage(QSize(layer.width(), layer.height()))
-                s.setValue("/Projections/defaultBehavior", oldValidation)
-            else:
-                has_corrected = False
-                if imageFormat == "tif":
-                    # other than TIFF => assumes can be loaded by Qt
-                    has_corrected = self.preCheckImage(absPath)
-                if has_corrected:
-                    # image already loaded by preCheckImage
-                    self.showBarMessage(
-                        "Raster changed",
-                        "Raster content has been transformed for display in the "
-                        "plugin. "
-                        "When exporting, select the 'Only export world file' checkbox.",
-                        Qgis.MessageLevel.Warning,
-                        10,
-                    )
-                else:
-                    reader = QImageReader(absPath)
-                    self.image = reader.read()
-
-            self.initialized = True
-            self.initializing = False
-
+            display = load_raster_for_display(absPath)
+            if replacement_filepath is not None:
+                self.filepath = replacement_filepath
+                self.setCustomProperty("filepath", self.filepath)
+                QgsProject.instance().setDirty(True)
+            self._applyRasterDisplay(display)
             self.setupCrs()
 
             if screenExtent:
-                # constructor called from AddLayer action
-                # if not, layer loaded from QGS project file
+                self.initializeTransformParameters(screenExtent, display)
+        except RasterLoadError as ex:
+            self.load_error = str(ex)
+            self.error = True
+            self.setValid(False)
+            self.showBarMessage(
+                "Raster load failed",
+                self.load_error,
+                Qgis.MessageLevel.Critical,
+                8,
+            )
+        finally:
+            self.initializing = False
 
-                # check if image already has georef info
-                # use GDAL
-                dataset = gdal.Open(absPath, gdal.GA_ReadOnly)
-                georef = None
-                if dataset:
-                    georef = dataset.GetGeoTransform()
+    def _applyRasterDisplay(self, display):
+        self._raster_display = display
+        self.image = display.qimage
+        self.raster_warnings = list(display.warnings)
+        self.load_error = ""
+        self.error = False
+        self.initialized = True
+        self.setValid(True)
+        self._extent = None
+        self.setCustomProperty("imageWidth", display.width)
+        self.setCustomProperty("imageHeight", display.height)
+        for warning in self.raster_warnings:
+            self.showBarMessage(
+                "Raster display",
+                warning,
+                Qgis.MessageLevel.Warning,
+                10,
+            )
 
-                if georef and not self.is_default_geotransform(georef):
-                    self.initializeExistingGeoreferencing(dataset, georef)
-                else:
-                    # init to default params
-                    self.setCenter(screenExtent.center())
-                    self.setRotation(0.0)
+    def initializeTransformParameters(self, screenExtent, display):
+        if display.geotransform and not self.is_default_geotransform(
+            display.geotransform
+        ):
+            raster_georef = transform_math.georeference_from_geotransform(
+                display.geotransform,
+                display.width,
+                display.height,
+                display.crs_wkt,
+            )
+            self.initializeExistingGeoreferencing(raster_georef)
+        else:
+            self.setCenter(screenExtent.center())
+            self.setRotation(0.0)
+            self.resetScale(screenExtent.width(), screenExtent.height())
+            self.commitTransformParameters()
 
-                    sw = screenExtent.width()
-                    sh = screenExtent.height()
+    def initializeExistingGeoreferencing(self, raster_georef):
+        center = QgsPointXY(raster_georef.center.x, raster_georef.center.y)
 
-                    self.resetScale(sw, sh)
-
-                    self.commitTransformParameters()
-
-    def preCheckImage(self, filepath):
-        nbands, datatype, width, height = gdal_utils.format(filepath)
-
-        pixels = None
-        if nbands not in (1, 3):
-            pixels = gdal_utils.pixels(filepath)
-            if nbands > 3:
-                # first 3
-                pixels = pixels[:3]
-                nbands = 3
-
-            if nbands == 2:
-                # remove band 2
-                pixels = pixels[0][np.newaxis, ...]
-                nbands = 1
-
-        if datatype != "Byte":
-            pixels = pixels if pixels is not None else gdal_utils.pixels(filepath)
-
-            bands = np.empty(np.shape(pixels), dtype=np.uint8)
-            for i in range(nbands):
-                band_pixels = pixels[i]
-                bands[i] = gdal_utils.to_byte(band_pixels)
-            pixels = bands
-
-        if pixels is not None:
-            # some transformation done# band at the end
-            pixels = np.transpose(pixels, [1, 2, 0])
-            pixels = pixels.ravel()
-
-            if nbands == 1:
-                # monochrome
-                format = QImage.Format.Format_Grayscale8
-                bytesPerLine = width
-            else:
-                format = QImage.Format.Format_RGB888
-                bytesPerLine = 3 * width
-
-            # Byte
-            qImg = QImage(pixels, width, height, bytesPerLine, format)
-            self.image = qImg
-
-            return True
-
-        return False
-
-    def initializeExistingGeoreferencing(self, dataset, georef):
-        # georef can have scaling, rotation or translation
-        rotation = 180 / math.pi * -math.atan2(georef[4], georef[1])
-        sx = math.sqrt(georef[1] ** 2 + georef[4] ** 2)
-        sy = math.sqrt(georef[2] ** 2 + georef[5] ** 2)
-        i_center_x = self.image.width() / 2
-        i_center_y = self.image.height() / 2
-        center = QgsPointXY(
-            georef[0] + georef[1] * i_center_x + georef[2] * i_center_y,
-            georef[3] + georef[4] * i_center_x + georef[5] * i_center_y,
+        qDebug(
+            repr(raster_georef.rotation)
+            + " "
+            + repr((raster_georef.x_scale, raster_georef.y_scale))
+            + " "
+            + repr(center)
         )
 
-        qDebug(repr(rotation) + " " + repr((sx, sy)) + " " + repr(center))
-
-        self.setRotation(rotation)
+        self.setRotation(raster_georef.rotation)
         self.setCenter(center)
-        # keep yScale positive
-        self.setScale(sx, sy)
+        self.setScale(raster_georef.x_scale, raster_georef.y_scale)
         self.commitTransformParameters()
 
-        crs_wkt = dataset.GetProjection()
         message_shown = False
-        if crs_wkt:
-            qcrs = QgsCoordinateReferenceSystem(crs_wkt)
+        if raster_georef.crs_wkt:
+            qcrs = QgsCoordinateReferenceSystem(raster_georef.crs_wkt)
             # TODO check change
             if qcrs.description() != self.crs().description():
                 # reproject
@@ -380,22 +325,27 @@ class FreehandRasterGeoreferencerLayer(QgsPluginLayer):
         Check if there is really a transform or if it is just the default
         made up by GDAL
         """
-        return georef[0] == 0 and georef[3] == 0 and georef[1] == 1 and georef[5] == 1
+        return transform_math.is_default_geotransform(georef)
 
     def resetScale(self, sw, sh):
-        iw = self.image.width()
-        ih = self.image.height()
-        wratio = sw / iw
-        hratio = sh / ih
-
-        if wratio > hratio:
-            # takes all height of current extent
-            self.setScale(hratio, hratio)
-        else:
-            # all width
-            self.setScale(wratio, wratio)
+        x_scale, y_scale = transform_math.fit_scale_to_extent(
+            self.image.width(), self.image.height(), sw, sh
+        )
+        self.setScale(x_scale, y_scale)
 
     def replaceImage(self, filepath, title):
+        try:
+            display = load_raster_for_display(filepath)
+        except RasterLoadError as ex:
+            QgsMessageLog.logMessage(repr(ex))
+            self.showBarMessage(
+                "Raster load failed",
+                str(ex),
+                Qgis.MessageLevel.Critical,
+                8,
+            )
+            return False
+
         self.title = title
         self.filepath = filepath
 
@@ -404,23 +354,10 @@ class FreehandRasterGeoreferencerLayer(QgsPluginLayer):
         self.setCustomProperty("filepath", self.filepath)
         self.setName(title)
 
-        fileInfo = QFileInfo(filepath)
-        ext = fileInfo.suffix()
-        if ext == "pdf":
-            s = QSettings()
-            oldValidation = s.value("/Projections/defaultBehavior")
-            s.setValue(
-                "/Projections/defaultBehavior", "useGlobal"
-            )  # for not asking about crs
-            path = fileInfo.filePath()
-            baseName = fileInfo.baseName()
-            layer = QgsRasterLayer(path, baseName)
-            self.image = layer.previewAsImage(QSize(layer.width(), layer.height()))
-            s.setValue("/Projections/defaultBehavior", oldValidation)
-        else:
-            reader = QImageReader(filepath)
-            self.image = reader.read()
+        self._applyRasterDisplay(display)
+        QgsProject.instance().setDirty(True)
         self.repaint()
+        return True
 
     def clone(self):
         layer = FreehandRasterGeoreferencerLayer(
@@ -434,6 +371,8 @@ class FreehandRasterGeoreferencerLayer(QgsPluginLayer):
         return layer
 
     def getAbsoluteFilepath(self):
+        if not self.filepath:
+            return ""
         if not os.path.isabs(self.filepath):
             # relative to QGS file
             qgsPath = QgsProject.instance().fileName()
@@ -444,6 +383,15 @@ class FreehandRasterGeoreferencerLayer(QgsPluginLayer):
 
         return filepath
 
+    def expectedImageSize(self):
+        width = int(self.customProperty("imageWidth", 0) or 0)
+        height = int(self.customProperty("imageHeight", 0) or 0)
+        if width > 0 and height > 0:
+            return (width, height)
+        if self.image is not None:
+            return (self.image.width(), self.image.height())
+        return None
+
     def extent(self):
         self.initializeLayer()
         if not self.initialized:
@@ -453,12 +401,8 @@ class FreehandRasterGeoreferencerLayer(QgsPluginLayer):
         if self._extent:
             return self._extent
 
-        topLeft, topRight, bottomRight, bottomLeft = self.cornerCoordinates()
-
-        left = min(topLeft.x(), topRight.x(), bottomRight.x(), bottomLeft.x())
-        right = max(topLeft.x(), topRight.x(), bottomRight.x(), bottomLeft.x())
-        top = max(topLeft.y(), topRight.y(), bottomRight.y(), bottomLeft.y())
-        bottom = min(topLeft.y(), topRight.y(), bottomRight.y(), bottomLeft.y())
+        corners = tuple(self._pointFromQgs(point) for point in self.cornerCoordinates())
+        left, bottom, right, top = transform_math.extent_from_corners(corners)
 
         # recenter + create rectangle
         self._extent = QgsRectangle(left, bottom, right, top)
@@ -470,104 +414,57 @@ class FreehandRasterGeoreferencerLayer(QgsPluginLayer):
         )
 
     def transformedCornerCoordinates(self, center, rotation, xScale, yScale):
-        # scale
-        topLeft = QgsPointXY(
-            -self.image.width() / 2.0 * xScale, self.image.height() / 2.0 * yScale
+        return tuple(
+            self._qgsPointFromPoint(point)
+            for point in transform_math.corner_coordinates(
+                self.image.width(),
+                self.image.height(),
+                self._pointFromQgs(center),
+                rotation,
+                xScale,
+                yScale,
+            )
         )
-        topRight = QgsPointXY(
-            self.image.width() / 2.0 * xScale, self.image.height() / 2.0 * yScale
-        )
-        bottomLeft = QgsPointXY(
-            -self.image.width() / 2.0 * xScale, -self.image.height() / 2.0 * yScale
-        )
-        bottomRight = QgsPointXY(
-            self.image.width() / 2.0 * xScale, -self.image.height() / 2.0 * yScale
-        )
-
-        # rotate
-        # minus sign because rotation is CW in this class and Qt)
-        rotationRad = -rotation * math.pi / 180
-        cosRot = math.cos(rotationRad)
-        sinRot = math.sin(rotationRad)
-
-        topLeft = self._rotate(topLeft, cosRot, sinRot)
-        topRight = self._rotate(topRight, cosRot, sinRot)
-        bottomRight = self._rotate(bottomRight, cosRot, sinRot)
-        bottomLeft = self._rotate(bottomLeft, cosRot, sinRot)
-
-        topLeft.set(topLeft.x() + center.x(), topLeft.y() + center.y())
-        topRight.set(topRight.x() + center.x(), topRight.y() + center.y())
-        bottomRight.set(bottomRight.x() + center.x(), bottomRight.y() + center.y())
-        bottomLeft.set(bottomLeft.x() + center.x(), bottomLeft.y() + center.y())
-
-        return (topLeft, topRight, bottomRight, bottomLeft)
 
     def transformedCornerCoordinatesFromPoint(
         self, startPoint, rotation, xScale, yScale
     ):
-        # startPoint is a fixed point for this new movement (rotation and
-        # scale)
-        # rotation is the global rotation of the image
-        # xScale is the new xScale factor to be multiplied by self.xScale
-        # idem for yScale
-        # Calculate the coordinate of the center in a startPoint origin
-        # coordinate system and apply scales
-        dX = (self.center.x() - startPoint.x()) * xScale
-        dY = (self.center.y() - startPoint.y()) * yScale
-        # Half width and half height in the current transformation
-        hW = (self.image.width() / 2.0) * self.xScale * xScale
-        hH = (self.image.height() / 2.0) * self.yScale * yScale
-        # Actual rectangle coordinates :
-        pt1 = QgsPointXY(-hW, hH)
-        pt2 = QgsPointXY(hW, hH)
-        pt3 = QgsPointXY(hW, -hH)
-        pt4 = QgsPointXY(-hW, -hH)
-        # Actual rotation from the center
-        # minus sign because rotation is CW in this class and Qt)
-        rotationRad = -self.rotation * math.pi / 180
-        cosRot = math.cos(rotationRad)
-        sinRot = math.sin(rotationRad)
-        pt1 = self._rotate(pt1, cosRot, sinRot)
-        pt2 = self._rotate(pt2, cosRot, sinRot)
-        pt3 = self._rotate(pt3, cosRot, sinRot)
-        pt4 = self._rotate(pt4, cosRot, sinRot)
-        # Second transformation
-        # displacement of the origin
-        pt1 = QgsPointXY(pt1.x() + dX, pt1.y() + dY)
-        pt2 = QgsPointXY(pt2.x() + dX, pt2.y() + dY)
-        pt3 = QgsPointXY(pt3.x() + dX, pt3.y() + dY)
-        pt4 = QgsPointXY(pt4.x() + dX, pt4.y() + dY)
-        # Rotation
-        # minus sign because rotation is CW in this class and Qt)
-        rotationRad = -rotation * math.pi / 180
-        cosRot = math.cos(rotationRad)
-        sinRot = math.sin(rotationRad)
-        pt1 = self._rotate(pt1, cosRot, sinRot)
-        pt2 = self._rotate(pt2, cosRot, sinRot)
-        pt3 = self._rotate(pt3, cosRot, sinRot)
-        pt4 = self._rotate(pt4, cosRot, sinRot)
-        # translate to startPoint
-        pt1 = QgsPointXY(pt1.x() + startPoint.x(), pt1.y() + startPoint.y())
-        pt2 = QgsPointXY(pt2.x() + startPoint.x(), pt2.y() + startPoint.y())
-        pt3 = QgsPointXY(pt3.x() + startPoint.x(), pt3.y() + startPoint.y())
-        pt4 = QgsPointXY(pt4.x() + startPoint.x(), pt4.y() + startPoint.y())
-
-        return (pt1, pt2, pt3, pt4)
+        return tuple(
+            self._qgsPointFromPoint(point)
+            for point in transform_math.corner_coordinates_from_point(
+                self.image.width(),
+                self.image.height(),
+                self._pointFromQgs(self.center),
+                self.rotation,
+                self.xScale,
+                self.yScale,
+                self._pointFromQgs(startPoint),
+                rotation,
+                xScale,
+                yScale,
+            )
+        )
 
     def moveCenterFromPointRotate(self, startPoint, rotation, xScale, yScale):
-        cornerPoints = self.transformedCornerCoordinatesFromPoint(
-            startPoint, rotation, xScale, yScale
+        center = transform_math.center_from_point_transform(
+            self.image.width(),
+            self.image.height(),
+            self._pointFromQgs(self.center),
+            self.rotation,
+            self.xScale,
+            self.yScale,
+            self._pointFromQgs(startPoint),
+            rotation,
+            xScale,
+            yScale,
         )
-        self.center = QgsPointXY(
-            (cornerPoints[0].x() + cornerPoints[2].x()) / 2,
-            (cornerPoints[0].y() + cornerPoints[2].y()) / 2,
-        )
+        self.center = self._qgsPointFromPoint(center)
 
-    def _rotate(self, point, cosRot, sinRot):
-        return QgsPointXY(
-            point.x() * cosRot - point.y() * sinRot,
-            point.x() * sinRot + point.y() * cosRot,
-        )
+    def _pointFromQgs(self, point):
+        return transform_math.Point(point.x(), point.y())
+
+    def _qgsPointFromPoint(self, point):
+        return QgsPointXY(point.x, point.y)
 
     def createMapRenderer(self, rendererContext):
         return FreehandRasterGeoreferencerLayerRenderer(self, rendererContext)
@@ -666,16 +563,40 @@ class FreehandRasterGeoreferencerLayer(QgsPluginLayer):
         lines = []
         fmt = "%s:\t%s"
         lines.append(fmt % (self.tr("Title"), self.title))
-        filepath = self.getAbsoluteFilepath()
-        filepath = os.path.normpath(filepath)
-        lines.append(fmt % (self.tr("Path"), filepath))
-        lines.append(fmt % (self.tr("Image Width"), str(self.image.width())))
-        lines.append(fmt % (self.tr("Image Height"), str(self.image.height())))
+        stored_path = self.filepath or ""
+        resolved_path = self.getAbsoluteFilepath()
+        if resolved_path:
+            resolved_path = os.path.normpath(resolved_path)
+        lines.append(fmt % (self.tr("Stored path"), stored_path))
+        lines.append(fmt % (self.tr("Resolved path"), resolved_path))
+        lines.append(
+            fmt
+            % (
+                self.tr("File exists"),
+                str(bool(resolved_path and os.path.exists(resolved_path))),
+            )
+        )
+        lines.append(fmt % (self.tr("Layer initialized"), str(self.initialized)))
+        if self.load_error:
+            lines.append(fmt % (self.tr("Load error"), self.load_error))
+        expected_size = self.expectedImageSize()
+        image_width = self.image.width() if self.image is not None else 0
+        image_height = self.image.height() if self.image is not None else 0
+        if expected_size is not None and image_width == 0 and image_height == 0:
+            image_width, image_height = expected_size
+        lines.append(fmt % (self.tr("Image Width"), str(image_width)))
+        lines.append(fmt % (self.tr("Image Height"), str(image_height)))
         lines.append(fmt % (self.tr("Rotation (CW)"), str(self.rotation)))
         lines.append(fmt % (self.tr("X center"), str(self.center.x())))
         lines.append(fmt % (self.tr("Y center"), str(self.center.y())))
         lines.append(fmt % (self.tr("X scale"), str(self.xScale)))
         lines.append(fmt % (self.tr("Y scale"), str(self.yScale)))
+        lines.append(
+            self.tr(
+                "Plugin layer source is stored in custom properties; an empty "
+                "layer-tree source and dummy provider URI are expected."
+            )
+        )
 
         return "\n".join(lines)
 

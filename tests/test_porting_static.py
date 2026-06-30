@@ -71,12 +71,15 @@ def test_no_legacy_qgis3_qt5_artifacts_remain():
         "Qgis.Info",
         "Qgis.Warning",
         "Qgis.Critical",
+        "QImageReader",
+        "previewAsImage",
     ]
     for literal in forbidden_literals:
         assert literal not in source
 
     assert not re.search(r"from\s+\.\s*ui_", source)
     assert not re.search(r"import\s+\.\s*ui_", source)
+    assert not re.search(r"def\s+metadata\s*\(", source)
 
 
 def test_properties_dialog_uses_qt6_tab_stop_api():

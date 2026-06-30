@@ -17,7 +17,7 @@ from qgis.gui import QgsMessageBar
 from qgis.PyQt.QtCore import QPointF, QRectF, QSize, qDebug
 from qgis.PyQt.QtGui import QColor, QImage, QImageWriter, QPainter
 
-from . import utils
+from . import transform as transform_math, utils
 
 
 class ExportGeorefRasterCommand:
@@ -41,16 +41,13 @@ class ExportGeorefRasterCommand:
                 # in world file
                 img = layer.image
 
-                a = layer.xScale * math.cos(radRotation)
-                # sin instead of -sin because angle in CW
-                b = -layer.yScale * math.sin(radRotation)
-                d = layer.xScale * -math.sin(radRotation)
-                e = -layer.yScale * math.cos(radRotation)
-                c = layer.center.x() - (
-                    a * (originalWidth - 1) / 2 + b * (originalHeight - 1) / 2
-                )
-                f = layer.center.y() - (
-                    d * (originalWidth - 1) / 2 + e * (originalHeight - 1) / 2
+                world_file_transform = transform_math.world_file_transform_for_image(
+                    originalWidth,
+                    originalHeight,
+                    transform_math.Point(layer.center.x(), layer.center.y()),
+                    layer.rotation,
+                    layer.xScale,
+                    layer.yScale,
                 )
 
             else:
@@ -101,13 +98,16 @@ class ExportGeorefRasterCommand:
                 painter.end()
 
                 extent = layer.extent()
-                a = extent.width() / width
-                e = -extent.height() / height
-                # 2nd term because (0,0) of world file is on center of upper
-                # left pixel instead of upper left corner of that pixel
-                c = extent.xMinimum() + a / 2
-                f = extent.yMaximum() + e / 2
-                b = d = 0.0
+                world_file_transform = transform_math.world_file_transform_for_extent(
+                    width,
+                    height,
+                    (
+                        extent.xMinimum(),
+                        extent.yMinimum(),
+                        extent.xMaximum(),
+                        extent.yMaximum(),
+                    ),
+                )
 
             if not isExportOnlyWorldFile:
                 # export image
@@ -136,7 +136,9 @@ class ExportGeorefRasterCommand:
                 # order is as described at
                 # http://webhelp.esri.com/arcims/9.3/General/topics/author_world_files.htm
                 writer.write(
-                    f"{a:.13f}\n{d:.13f}\n{b:.13f}\n{e:.13f}\n{c:.13f}\n{f:.13f}"
+                    "\n".join(
+                        f"{value:.13f}" for value in world_file_transform.as_lines()
+                    )
                 )
 
             crsFilePath = rasterPath + ".aux.xml"
