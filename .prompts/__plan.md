@@ -1,4 +1,5 @@
 - [fix gh issues](A_tasks/E_fix_gh_issues.md)
+- [GDAL downsampling tiled windowed rendering](A_tasks/F_GDAL_downsampling_tiled_windowed_rendering.md)
 - [Use raster layer style for tiffs](A_tasks/B_Use_raster_layer_style_for_tiffs.md)
 ! [Initialization](A_tasks/A_Initialization.md)
 ! [fix scaling](A_tasks/D_fix_scaling.md)
