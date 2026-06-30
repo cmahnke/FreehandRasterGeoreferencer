@@ -28,34 +28,34 @@ class FreehandRasterGeoreferencerDialog(QDialog):
         QDialog.__init__(self)
         load_ui(self, "freehandrastergeoreferencerdialog.ui")
         adjust_dialog_to_content(self)
-        self.configureAdvancedMenu()
-        self.pushButtonAdd.clicked.connect(self.addNew)
+        self.configure_advanced_menu()
+        self.pushButtonAdd.clicked.connect(self.add_new)
         self.pushButtonCancel.clicked.connect(self.reject)
-        self.pushButtonBrowse.clicked.connect(self.showBrowserDialog)
-        self.toolButtonAdvanced.clicked.connect(self.showAdvancedMenu)
+        self.pushButtonBrowse.clicked.connect(self.show_browser_dialog)
+        self.toolButtonAdvanced.clicked.connect(self.show_advanced_menu)
 
     def clear(self, layer):
         self.layer = layer
         if layer is None:
-            imagepath = ""
+            image_path = ""
         else:
-            imagepath = layer.filepath
+            image_path = layer.filepath
 
-        self.lineEditImagePath.setText(imagepath)
-        self.lineEditImagePath.setToolTip(imagepath)
+        self.lineEditImagePath.setText(image_path)
+        self.lineEditImagePath.setToolTip(image_path)
         adjust_dialog_to_content(self)
 
-    def showBrowserDialog(self):
-        bDir, found = QgsProject.instance().readEntry(
+    def show_browser_dialog(self):
+        browser_dir, found = QgsProject.instance().readEntry(
             utils.SETTINGS_KEY, utils.SETTING_BROWSER_RASTER_DIR, None
         )
-        if not found or not bDir or not os.path.isdir(bDir):
-            bDir = os.path.expanduser("~")
+        if not found or not browser_dir or not os.path.isdir(browser_dir):
+            browser_dir = os.path.expanduser("~")
 
         filepath, _ = QFileDialog.getOpenFileName(
             self,
             "Select raster",
-            bDir,
+            browser_dir,
             "Rasters (*.png *.bmp *.jpg *.jpeg *.tif *.tiff *.pdf *.jp2 *.ecw);;"
             "All files (*)",
         )
@@ -63,17 +63,17 @@ class FreehandRasterGeoreferencerDialog(QDialog):
         if filepath:
             self.lineEditImagePath.setText(filepath)
             self.lineEditImagePath.setToolTip(filepath)
-            bDir, _ = os.path.split(filepath)
+            browser_dir, _ = os.path.split(filepath)
             QgsProject.instance().writeEntry(
-                utils.SETTINGS_KEY, utils.SETTING_BROWSER_RASTER_DIR, bDir
+                utils.SETTINGS_KEY, utils.SETTING_BROWSER_RASTER_DIR, browser_dir
             )
 
-    def configureAdvancedMenu(self):
+    def configure_advanced_menu(self):
         action1 = QAction("Replace image for selected layer", self)
         action2 = QAction("Duplicate selected layer", self)
 
-        action1.triggered.connect(self.replaceImage)
-        action2.triggered.connect(self.duplicateLayer)
+        action1.triggered.connect(self.replace_image)
+        action2.triggered.connect(self.duplicate_layer)
 
         menu = QMenu(self)
         menu.addAction(action1)
@@ -81,47 +81,47 @@ class FreehandRasterGeoreferencerDialog(QDialog):
 
         self.toolButtonAdvanced.setMenu(menu)
 
-    def showAdvancedMenu(self):
+    def show_advanced_menu(self):
         self.toolButtonAdvanced.showMenu()
 
-    def replaceImage(self):
+    def replace_image(self):
         self.accept(self.REPLACE)
 
-    def duplicateLayer(self):
+    def duplicate_layer(self):
         self.accept(self.DUPLICATE, False)
 
-    def addNew(self):
+    def add_new(self):
         self.accept()
 
-    def accept(self, retValue=QDialog.DialogCode.Accepted, validate=True):
+    def accept(self, return_value=QDialog.DialogCode.Accepted, validate=True):
         if not validate:
-            self.done(retValue)
+            self.done(return_value)
             return
 
         result, message, details = self.validate()
         if result:
-            self.done(retValue)
+            self.done(return_value)
         else:
-            msgBox = QMessageBox()
-            msgBox.setWindowTitle("Error")
-            msgBox.setText(message)
-            msgBox.setDetailedText(details)
-            msgBox.setStandardButtons(QMessageBox.StandardButton.Ok)
-            configure_message_box(msgBox)
-            msgBox.exec()
+            message_box = QMessageBox()
+            message_box.setWindowTitle("Error")
+            message_box.setText(message)
+            message_box.setDetailedText(details)
+            message_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+            configure_message_box(message_box)
+            message_box.exec()
 
     def validate(self):
         result = True
         message = ""
         details = ""
 
-        self.imagePath = self.lineEditImagePath.text()
-        if not os.path.isfile(self.imagePath):
+        self.image_path = self.lineEditImagePath.text()
+        if not os.path.isfile(self.image_path):
             result = False
             details += "The path must be an image file"
         else:
             try:
-                probe_raster_size(self.imagePath)
+                probe_raster_size(self.image_path)
             except RasterLoadError as ex:
                 result = False
                 if len(details) > 0:

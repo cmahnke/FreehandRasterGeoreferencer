@@ -21,19 +21,19 @@ class PropertiesDialog(QDialog):
         self.setWindowTitle(f"{self.tr('Layer Properties')} - {layer.name()}")
 
         self.layer = layer
-        self.horizontalSlider_Transparency.valueChanged.connect(self.sliderChanged)
-        self.spinBox_Transparency.valueChanged.connect(self.spinBoxChanged)
+        self.horizontalSlider_Transparency.valueChanged.connect(self.slider_changed)
+        self.spinBox_Transparency.valueChanged.connect(self.spin_box_changed)
 
         self.textEdit_Properties.setText(layer.freehand_metadata())
         self.spinBox_Transparency.setValue(layer.transparency)
 
-    def sliderChanged(self, val):
+    def slider_changed(self, val):
         s = self.spinBox_Transparency
         s.blockSignals(True)
         s.setValue(val)
         s.blockSignals(False)
 
-    def spinBoxChanged(self, val):
+    def spin_box_changed(self, val):
         s = self.horizontalSlider_Transparency
         s.blockSignals(True)
         s.setValue(val)

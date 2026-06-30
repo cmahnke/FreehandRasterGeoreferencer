@@ -49,4 +49,6 @@ unstaged, package verification may need a temporary clean Git repo.
 
 ## Considerations
 
-This is not a library, but a self-contained program. Do no maintain code compatibility between versions. Do not redirect code so the interface is maintained. Interface does not need to be maintained.
+This is not a library, but a self-contained program. Do no maintain code compatibility between versions. Do not redirect code so the interface is maintained. Interface does not need to be maintained. There is no need for "compatiblity shims".
+
+For internal methods / variables, use snake_case. Only use camelCase for the implementations of QGIS-provided interfaces (if this is what it uses).

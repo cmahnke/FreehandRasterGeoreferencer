@@ -19,22 +19,22 @@ SETTINGS_KEY = "FreehandRasterGeoreferencer"
 SETTING_BROWSER_RASTER_DIR = "browseRasterDir"
 
 
-def toRelativeToQGS(imagePath):
-    qgsPath = QgsProject.instance().fileName()
-    if qgsPath and os.path.isabs(imagePath):
+def to_relative_to_qgs(image_path):
+    qgs_path = QgsProject.instance().fileName()
+    if qgs_path and os.path.isabs(image_path):
         # Make it relative to current project if image below QGS
-        imageFolder, imageName = os.path.split(imagePath)
-        qgsFolder, _ = os.path.split(qgsPath)
+        imageFolder, image_name = os.path.split(image_path)
+        qgs_folder, _ = os.path.split(qgs_path)
         imageFolder = os.path.abspath(imageFolder)
-        qgsFolder = os.path.abspath(qgsFolder)
+        qgs_folder = os.path.abspath(qgs_folder)
 
-        if imageFolder.startswith(qgsFolder):
+        if imageFolder.startswith(qgs_folder):
             # relative
-            imageFolderRelPath = os.path.relpath(imageFolder, qgsFolder)
-            imagePath = os.path.join(imageFolderRelPath, imageName)
-            qDebug(imagePath)
+            imageFolderRelPath = os.path.relpath(imageFolder, qgs_folder)
+            image_path = os.path.join(imageFolderRelPath, image_name)
+            qDebug(image_path)
 
-    return imagePath
+    return image_path
 
 
 def tryfloat(strF):
@@ -45,7 +45,7 @@ def tryfloat(strF):
         return None
 
 
-def imageFormat(path):
+def image_format(path):
     _, extension = os.path.splitext(path)
     extension = extension.lstrip(".").lower()
     if extension == "tiff":

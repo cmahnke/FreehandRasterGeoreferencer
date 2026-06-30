@@ -32,99 +32,99 @@ class RasterShadowMapCanvasItem(QgsMapCanvasItem):
         self.fxscale = 1
         self.fyscale = 1
 
-    def setDeltaDisplacement(self, dx, dy, doUpdate):
+    def set_delta_displacement(self, dx, dy, do_update):
         self.dx = dx
         self.dy = dy
-        if doUpdate:
+        if do_update:
             self.setVisible(self.layer is None)
-            self.updateRect()
+            self.update_rect()
             self.update()
 
-    def setDeltaRotation(self, rotation, doUpdate):
+    def set_delta_rotation(self, rotation, do_update):
         self.drotation = rotation
-        if doUpdate:
-            self.updateRect()
+        if do_update:
+            self.update_rect()
             self.update()
 
-    def setDeltaRotationFromPoint(self, rotation, startPoint, doUpdate):
+    def set_delta_rotation_from_point(self, rotation, start_point, do_update):
         # Rotation around a point other than center of raster
         self.drotation = rotation
-        if doUpdate:
-            self.updateRectFromPoint(startPoint)
+        if do_update:
+            self.update_rect_from_point(start_point)
             self.update()
 
-    def setDeltaScale(self, xscale, yscale, doUpdate):
+    def set_delta_scale(self, xscale, yscale, do_update):
         self.fxscale = xscale
         self.fyscale = yscale
-        if doUpdate:
-            self.updateRect()
+        if do_update:
+            self.update_rect()
             self.update()
 
-    def updateRect(self):
-        topLeft, topRight, bottomRight, bottomLeft = self.cornerCoordinates()
+    def update_rect(self):
+        top_left, top_right, bottom_right, bottom_left = self.corner_coordinates()
 
-        left = min(topLeft.x(), topRight.x(), bottomRight.x(), bottomLeft.x())
-        right = max(topLeft.x(), topRight.x(), bottomRight.x(), bottomLeft.x())
-        top = max(topLeft.y(), topRight.y(), bottomRight.y(), bottomLeft.y())
-        bottom = min(topLeft.y(), topRight.y(), bottomRight.y(), bottomLeft.y())
+        left = min(top_left.x(), top_right.x(), bottom_right.x(), bottom_left.x())
+        right = max(top_left.x(), top_right.x(), bottom_right.x(), bottom_left.x())
+        top = max(top_left.y(), top_right.y(), bottom_right.y(), bottom_left.y())
+        bottom = min(top_left.y(), top_right.y(), bottom_right.y(), bottom_left.y())
 
         self.setRect(QgsRectangle(left, bottom, right, top))
 
-    def updateRectFromPoint(self, startPoint):
-        topLeft, topRight, bottomRight, bottomLeft = self.cornerCoordinatesFromPoint(
-            startPoint
+    def update_rect_from_point(self, start_point):
+        top_left, top_right, bottom_right, bottom_left = (
+            self.corner_coordinates_from_point(start_point)
         )
 
-        left = min(topLeft.x(), topRight.x(), bottomRight.x(), bottomLeft.x())
-        right = max(topLeft.x(), topRight.x(), bottomRight.x(), bottomLeft.x())
-        top = max(topLeft.y(), topRight.y(), bottomRight.y(), bottomLeft.y())
-        bottom = min(topLeft.y(), topRight.y(), bottomRight.y(), bottomLeft.y())
+        left = min(top_left.x(), top_right.x(), bottom_right.x(), bottom_left.x())
+        right = max(top_left.x(), top_right.x(), bottom_right.x(), bottom_left.x())
+        top = max(top_left.y(), top_right.y(), bottom_right.y(), bottom_left.y())
+        bottom = min(top_left.y(), top_right.y(), bottom_right.y(), bottom_left.y())
 
         self.setRect(QgsRectangle(left, bottom, right, top))
 
-    def cornerCoordinates(self):
+    def corner_coordinates(self):
         center = QgsPointXY(
             self.layer.center.x() + self.dx, self.layer.center.y() + self.dy
         )
-        return self.layer.transformedCornerCoordinates(
+        return self.layer.transformed_corner_coordinates(
             center,
             self.layer.rotation + self.drotation,
-            self.layer.xScale * self.fxscale,
-            self.layer.yScale * self.fyscale,
+            self.layer.x_scale * self.fxscale,
+            self.layer.y_scale * self.fyscale,
         )
 
-    def cornerCoordinatesFromPoint(self, startPoint):
-        return self.layer.transformedCornerCoordinatesFromPoint(
-            startPoint, self.drotation, 1, 1
+    def corner_coordinates_from_point(self, start_point):
+        return self.layer.transformed_corner_coordinates_from_point(
+            start_point, self.drotation, 1, 1
         )
 
     def paint(self, painter, options, widget):
         painter.save()
-        self.prepareStyle(painter)
-        self.drawRaster(painter)
+        self.prepare_style(painter)
+        self.draw_raster(painter)
         painter.restore()
 
-    def drawRaster(self, painter):
-        mapUPerPixel = self.canvas.mapUnitsPerPixel()
+    def draw_raster(self, painter):
+        map_units_per_pixel = self.canvas.mapUnitsPerPixel()
 
-        scaleX = self.layer.xScale * self.fxscale / mapUPerPixel
-        scaleY = self.layer.yScale * self.fyscale / mapUPerPixel
+        scale_x = self.layer.x_scale * self.fxscale / map_units_per_pixel
+        scale_y = self.layer.y_scale * self.fyscale / map_units_per_pixel
 
         rect = QRectF(
             QPointF(-self.layer.image.width() / 2.0, -self.layer.image.height() / 2.0),
             QPointF(self.layer.image.width() / 2.0, self.layer.image.height() / 2.0),
         )
-        targetRect = self.boundingRect()
+        target_rect = self.boundingRect()
 
         painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
 
         # draw the image on the canvas item rectangle
         # center displacement already taken into account in canvas
         # item rectangle so no update
-        painter.translate(targetRect.center())
+        painter.translate(target_rect.center())
         painter.rotate(self.layer.rotation + self.drotation)
-        painter.scale(scaleX, scaleY)
+        painter.scale(scale_x, scale_y)
         painter.drawImage(rect, self.layer.image)
 
-    def prepareStyle(self, painter):
+    def prepare_style(self, painter):
         painter.setOpacity(min(0.5, 1 - self.layer.transparency / 100.0))

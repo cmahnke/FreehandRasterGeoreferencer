@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from fhgr.raster_io import (
+from fhgr.raster_display import (
     RasterBandData,
     compose_display_array,
     normalize_band_to_byte,

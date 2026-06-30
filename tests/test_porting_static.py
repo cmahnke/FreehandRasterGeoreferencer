@@ -39,9 +39,9 @@ def test_utils_helpers_without_qgis(monkeypatch):
 
     utils = importlib.import_module("fhgr.utils")
 
-    assert utils.imageFormat("scan.tiff") == "tif"
-    assert utils.imageFormat("scan.tifF") == "tif"
-    assert utils.imageFormat("scan.PNG") == "png"
+    assert utils.image_format("scan.tiff") == "tif"
+    assert utils.image_format("scan.tifF") == "tif"
+    assert utils.image_format("scan.PNG") == "png"
     assert utils.tryfloat("1.25") == 1.25
     assert utils.tryfloat("not-a-number") is None
 

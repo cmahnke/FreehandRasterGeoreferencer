@@ -22,8 +22,8 @@ class ExportGeorefRasterDialog(QDialog):
         load_ui(self, "exportgeorefrasterdialog.ui")
         adjust_dialog_to_content(self)
 
-        self.pushButtonBrowse.clicked.connect(self.showBrowserDialog)
-        self.checkBoxOnlyWorldFile.stateChanged.connect(self.setupOnlyWorldFile)
+        self.pushButtonBrowse.clicked.connect(self.show_browser_dialog)
+        self.checkBoxOnlyWorldFile.stateChanged.connect(self.setup_only_world_file)
 
     def clear(self, layer):
         self.lineEditImagePath.setText("")
@@ -32,11 +32,11 @@ class ExportGeorefRasterDialog(QDialog):
         self.checkBoxRotationMode.setEnabled(True)
         self.checkBoxOnlyWorldFile.setChecked(False)
 
-        defaultPath, _ = os.path.splitext(layer.filepath)
-        self.defaultPath = defaultPath + "_georeferenced.png"
-        self.lineEditImagePath.setPlaceholderText(self.defaultPath)
+        default_path, _ = os.path.splitext(layer.filepath)
+        self.default_path = default_path + "_georeferenced.png"
+        self.lineEditImagePath.setPlaceholderText(self.default_path)
 
-    def setupOnlyWorldFile(self):
+    def setup_only_world_file(self):
         if self.checkBoxOnlyWorldFile.isChecked():
             self._originalCheckBoxRotationModeChecked = (
                 self.checkBoxRotationMode.isChecked()
@@ -50,24 +50,24 @@ class ExportGeorefRasterDialog(QDialog):
             )
             self.checkBoxRotationMode.setEnabled(True)
 
-    def showBrowserDialog(self):
+    def show_browser_dialog(self):
         if self.lineEditImagePath.text():
-            filepathDialog = self.lineEditImagePath.text()
+            filepath_dialog = self.lineEditImagePath.text()
         else:
-            filepathDialog = self.defaultPath
+            filepath_dialog = self.default_path
 
         if not self.checkBoxOnlyWorldFile.isChecked():
             filepath, _ = QFileDialog.getSaveFileName(
                 None,
                 "Export georeferenced raster",
-                filepathDialog,
+                filepath_dialog,
                 "Images (*.png *.bmp *.jpg *.tif *.tiff)",
             )
         else:
             filepath, _ = QFileDialog.getOpenFileName(
                 None,
                 "Export world file for raster",
-                filepathDialog,
+                filepath_dialog,
                 "Images (*.png *.bmp *.jpg *.tif *.tiff)",
             )
 
@@ -80,29 +80,29 @@ class ExportGeorefRasterDialog(QDialog):
         if result:
             self.done(QDialog.DialogCode.Accepted)
         else:
-            msgBox = QMessageBox()
-            msgBox.setWindowTitle("Error")
-            msgBox.setText(message)
-            msgBox.setDetailedText(details)
-            msgBox.setStandardButtons(QMessageBox.StandardButton.Ok)
-            configure_message_box(msgBox)
-            msgBox.exec()
+            message_box = QMessageBox()
+            message_box.setWindowTitle("Error")
+            message_box.setText(message)
+            message_box.setDetailedText(details)
+            message_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+            configure_message_box(message_box)
+            message_box.exec()
 
     def validate(self):
         result = True
         message = ""
         details = ""
 
-        self.isPutRotationInWorldFile = self.checkBoxRotationMode.isChecked()
-        self.isExportOnlyWorldFile = self.checkBoxOnlyWorldFile.isChecked()
+        self.is_put_rotation_in_world_file = self.checkBoxRotationMode.isChecked()
+        self.is_export_only_world_file = self.checkBoxOnlyWorldFile.isChecked()
 
-        self.imagePath = self.lineEditImagePath.text()
-        if not self.imagePath:
+        self.image_path = self.lineEditImagePath.text()
+        if not self.image_path:
             result = False
             details += "A file must be selected"
 
         if result:
-            _, extension = os.path.splitext(self.imagePath)
+            _, extension = os.path.splitext(self.image_path)
             extension = extension.lower()
             if extension not in [".jpg", ".bmp", ".png", ".tif", ".tiff"]:
                 result = False

@@ -24,51 +24,55 @@ class ExportGeorefRasterCommand:
     def __init__(self, iface):
         self.iface = iface
 
-    def exportGeorefRaster(
-        self, layer, rasterPath, isPutRotationInWorldFile, isExportOnlyWorldFile
+    def export_georef_raster(
+        self,
+        layer,
+        raster_path,
+        is_put_rotation_in_world_file,
+        is_export_only_world_file,
     ):
-        baseRasterFilePath, _ = os.path.splitext(rasterPath)
+        base_raster_file_path, _ = os.path.splitext(raster_path)
         # suppose supported format already checked
-        rasterFormat = utils.imageFormat(rasterPath)
+        raster_format = utils.image_format(raster_path)
 
         try:
-            originalWidth = layer.image.width()
-            originalHeight = layer.image.height()
-            radRotation = layer.rotation * math.pi / 180
+            original_width = layer.image.width()
+            original_height = layer.image.height()
+            rad_rotation = layer.rotation * math.pi / 180
 
-            if isPutRotationInWorldFile or isExportOnlyWorldFile:
+            if is_put_rotation_in_world_file or is_export_only_world_file:
                 # keep the image as is and put all transformation params
                 # in world file
                 img = layer.image
 
                 world_file_transform = transform_math.world_file_transform_for_image(
-                    originalWidth,
-                    originalHeight,
+                    original_width,
+                    original_height,
                     transform_math.Point(layer.center.x(), layer.center.y()),
                     layer.rotation,
-                    layer.xScale,
-                    layer.yScale,
+                    layer.x_scale,
+                    layer.y_scale,
                 )
 
             else:
                 # transform the image with rotation and scaling between the
                 # axes
                 # maintain at least the original resolution of the raster
-                ratio = layer.xScale / layer.yScale
+                ratio = layer.x_scale / layer.y_scale
                 if ratio > 1:
                     # increase x
-                    scaleX = ratio
-                    scaleY = 1
+                    scale_x = ratio
+                    scale_y = 1
                 else:
                     # increase y
-                    scaleX = 1
-                    scaleY = 1.0 / ratio
+                    scale_x = 1
+                    scale_y = 1.0 / ratio
 
-                width = abs(scaleX * originalWidth * math.cos(radRotation)) + abs(
-                    scaleY * originalHeight * math.sin(radRotation)
+                width = abs(scale_x * original_width * math.cos(rad_rotation)) + abs(
+                    scale_y * original_height * math.sin(rad_rotation)
                 )
-                height = abs(scaleX * originalWidth * math.sin(radRotation)) + abs(
-                    scaleY * originalHeight * math.cos(radRotation)
+                height = abs(scale_x * original_width * math.sin(rad_rotation)) + abs(
+                    scale_y * original_height * math.cos(rad_rotation)
                 )
 
                 qDebug(f"wh {width:f},{height:f}")
@@ -93,7 +97,7 @@ class ExportGeorefRasterCommand:
 
                 painter.translate(QPointF(width / 2.0, height / 2.0))
                 painter.rotate(layer.rotation)
-                painter.scale(scaleX, scaleY)
+                painter.scale(scale_x, scale_y)
                 painter.drawImage(rect, layer.image)
                 painter.end()
 
@@ -109,30 +113,30 @@ class ExportGeorefRasterCommand:
                     ),
                 )
 
-            if not isExportOnlyWorldFile:
+            if not is_export_only_world_file:
                 # export image
-                if rasterFormat == "tif":
+                if raster_format == "tif":
                     writer = QImageWriter()
                     # use LZW compression for tiff
                     # useful for scanned documents (mostly white)
                     writer.setCompression(1)
                     writer.setFormat(b"TIFF")
-                    writer.setFileName(rasterPath)
+                    writer.setFileName(raster_path)
                     writer.write(img)
                 else:
-                    img.save(rasterPath, rasterFormat)
+                    img.save(raster_path, raster_format)
 
-            worldFilePath = baseRasterFilePath + "."
-            if rasterFormat == "jpg":
-                worldFilePath += "jgw"
-            elif rasterFormat == "png":
-                worldFilePath += "pgw"
-            elif rasterFormat == "bmp":
-                worldFilePath += "bpw"
-            elif rasterFormat == "tif":
-                worldFilePath += "tfw"
+            world_file_path = base_raster_file_path + "."
+            if raster_format == "jpg":
+                world_file_path += "jgw"
+            elif raster_format == "png":
+                world_file_path += "pgw"
+            elif raster_format == "bmp":
+                world_file_path += "bpw"
+            elif raster_format == "tif":
+                world_file_path += "tfw"
 
-            with open(worldFilePath, "w") as writer:
+            with open(world_file_path, "w") as writer:
                 # order is as described at
                 # http://webhelp.esri.com/arcims/9.3/General/topics/author_world_files.htm
                 writer.write(
@@ -141,10 +145,10 @@ class ExportGeorefRasterCommand:
                     )
                 )
 
-            crsFilePath = rasterPath + ".aux.xml"
-            with open(crsFilePath, "w") as writer:
+            crs_file_path = raster_path + ".aux.xml"
+            with open(crs_file_path, "w") as writer:
                 writer.write(
-                    self.auxContent(
+                    self.aux_content(
                         self.iface.mapCanvas().mapSettings().destinationCrs()
                     )
                 )
@@ -162,7 +166,7 @@ class ExportGeorefRasterCommand:
             )
             self.iface.messageBar().pushWidget(widget, Qgis.MessageLevel.Critical, 5)
 
-    def auxContent(self, crs):
+    def aux_content(self, crs):
         content = """<PAMDataset>
   <Metadata domain="xml:ESRI" format="xml">
     <GeodataXform xsi:type="typens:IdentityXform" 
@@ -175,5 +179,5 @@ class ExportGeorefRasterCommand:
     </GeodataXform>
   </Metadata>
 </PAMDataset>"""  # noqa
-        geogOrProj = "Geographic" if crs.isGeographic() else "Projected"
-        return content % (geogOrProj, crs.toWkt())
+        geog_or_proj = "Geographic" if crs.isGeographic() else "Projected"
+        return content % (geog_or_proj, crs.toWkt())

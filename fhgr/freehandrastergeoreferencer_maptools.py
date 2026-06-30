@@ -25,13 +25,13 @@ def event_pos(event):
     return event.position().toPoint()
 
 
-def isLayerVisible(iface, layer):
+def is_layer_visible(iface, layer):
     # TODO Really ???? See if there is something simpler
     vl = iface.layerTreeView().layerTreeModel().rootGroup().findLayer(layer)
     return vl.itemVisibilityChecked()
 
 
-def setLayerVisible(iface, layer, visible):
+def set_layer_visible(iface, layer, visible):
     vl = iface.layerTreeView().layerTreeModel().rootGroup().findLayer(layer)
     vl.setItemVisibilityChecked(visible)
 
@@ -42,100 +42,102 @@ class MoveRasterMapTool(QgsMapToolEmitPoint):
         self.canvas = iface.mapCanvas()
         QgsMapToolEmitPoint.__init__(self, self.canvas)
 
-        self.rasterShadow = RasterShadowMapCanvasItem(self.canvas)
+        self.raster_shadow = RasterShadowMapCanvasItem(self.canvas)
 
-        self.rubberBandDisplacement = QgsRubberBand(self.canvas, Qgis.GeometryType.Line)
-        self.rubberBandDisplacement.setColor(Qt.GlobalColor.red)
-        self.rubberBandDisplacement.setWidth(1)
+        self.rubber_band_displacement = QgsRubberBand(
+            self.canvas, Qgis.GeometryType.Line
+        )
+        self.rubber_band_displacement.setColor(Qt.GlobalColor.red)
+        self.rubber_band_displacement.setWidth(1)
 
-        self.rubberBandExtent = QgsRubberBand(self.canvas, Qgis.GeometryType.Line)
-        self.rubberBandExtent.setColor(Qt.GlobalColor.red)
-        self.rubberBandExtent.setWidth(1)
+        self.rubber_band_extent = QgsRubberBand(self.canvas, Qgis.GeometryType.Line)
+        self.rubber_band_extent.setColor(Qt.GlobalColor.red)
+        self.rubber_band_extent.setWidth(1)
 
-        self.isLayerVisible = True
+        self.is_layer_visible = True
 
         self.reset()
 
-    def setLayer(self, layer):
+    def set_layer(self, layer):
         self.layer = layer
 
     def reset(self):
-        self.startPoint = self.endPoint = None
-        self.isEmittingPoint = False
-        self.rubberBandDisplacement.reset(Qgis.GeometryType.Line)
-        self.rubberBandExtent.reset(Qgis.GeometryType.Line)
-        self.rasterShadow.reset()
+        self.start_point = self.end_point = None
+        self.is_emitting_point = False
+        self.rubber_band_displacement.reset(Qgis.GeometryType.Line)
+        self.rubber_band_extent.reset(Qgis.GeometryType.Line)
+        self.raster_shadow.reset()
         self.layer = None
 
     def canvasPressEvent(self, e):
-        self.startPoint = self.toMapCoordinates(event_pos(e))
-        self.endPoint = self.startPoint
-        self.isEmittingPoint = True
-        self.originalCenter = self.layer.center
+        self.start_point = self.toMapCoordinates(event_pos(e))
+        self.end_point = self.start_point
+        self.is_emitting_point = True
+        self.original_center = self.layer.center
         # this tool do the displacement itself TODO update so it is done by
         # transformed coordinates + new center)
-        self.originalCornerPoints = self.layer.transformedCornerCoordinates(
-            *self.layer.transformParameters()
+        self.original_corner_points = self.layer.transformed_corner_coordinates(
+            *self.layer.transform_parameters()
         )
 
-        self.isLayerVisible = isLayerVisible(self.iface, self.layer)
-        setLayerVisible(self.iface, self.layer, False)
+        self.is_layer_visible = is_layer_visible(self.iface, self.layer)
+        set_layer_visible(self.iface, self.layer, False)
 
-        self.showDisplacement(self.startPoint, self.endPoint)
+        self.show_displacement(self.start_point, self.end_point)
         self.layer.history.append({"action": "move", "center": self.layer.center})
 
     def canvasReleaseEvent(self, e):
-        self.isEmittingPoint = False
+        self.is_emitting_point = False
 
-        self.rubberBandDisplacement.reset(Qgis.GeometryType.Line)
-        self.rubberBandExtent.reset(Qgis.GeometryType.Line)
-        self.rasterShadow.reset()
+        self.rubber_band_displacement.reset(Qgis.GeometryType.Line)
+        self.rubber_band_extent.reset(Qgis.GeometryType.Line)
+        self.raster_shadow.reset()
 
-        x = self.originalCenter.x() + self.endPoint.x() - self.startPoint.x()
-        y = self.originalCenter.y() + self.endPoint.y() - self.startPoint.y()
-        self.layer.setCenter(QgsPointXY(x, y))
+        x = self.original_center.x() + self.end_point.x() - self.start_point.x()
+        y = self.original_center.y() + self.end_point.y() - self.start_point.y()
+        self.layer.set_center(QgsPointXY(x, y))
 
-        setLayerVisible(self.iface, self.layer, self.isLayerVisible)
+        set_layer_visible(self.iface, self.layer, self.is_layer_visible)
         self.layer.repaint()
 
-        self.layer.commitTransformParameters()
+        self.layer.commit_transform_parameters()
 
     def canvasMoveEvent(self, e):
-        if not self.isEmittingPoint:
+        if not self.is_emitting_point:
             return
 
-        self.endPoint = self.toMapCoordinates(event_pos(e))
-        self.showDisplacement(self.startPoint, self.endPoint)
+        self.end_point = self.toMapCoordinates(event_pos(e))
+        self.show_displacement(self.start_point, self.end_point)
 
-    def showDisplacement(self, startPoint, endPoint):
-        self.rubberBandDisplacement.reset(Qgis.GeometryType.Line)
-        point1 = QgsPointXY(startPoint.x(), startPoint.y())
-        point2 = QgsPointXY(endPoint.x(), endPoint.y())
-        self.rubberBandDisplacement.addPoint(point1, False)
-        self.rubberBandDisplacement.addPoint(point2, True)  # true to update canvas
-        self.rubberBandDisplacement.show()
+    def show_displacement(self, start_point, end_point):
+        self.rubber_band_displacement.reset(Qgis.GeometryType.Line)
+        point1 = QgsPointXY(start_point.x(), start_point.y())
+        point2 = QgsPointXY(end_point.x(), end_point.y())
+        self.rubber_band_displacement.addPoint(point1, False)
+        self.rubber_band_displacement.addPoint(point2, True)  # true to update canvas
+        self.rubber_band_displacement.show()
 
-        self.rubberBandExtent.reset(Qgis.GeometryType.Line)
-        for point in self.originalCornerPoints:
-            self._addDisplacementToPoint(self.rubberBandExtent, point, False)
+        self.rubber_band_extent.reset(Qgis.GeometryType.Line)
+        for point in self.original_corner_points:
+            self._add_displacement_to_point(self.rubber_band_extent, point, False)
         # for closing
-        self._addDisplacementToPoint(
-            self.rubberBandExtent, self.originalCornerPoints[0], True
+        self._add_displacement_to_point(
+            self.rubber_band_extent, self.original_corner_points[0], True
         )
-        self.rubberBandExtent.show()
+        self.rubber_band_extent.show()
 
-        self.rasterShadow.reset(self.layer)
-        self.rasterShadow.setDeltaDisplacement(
-            self.endPoint.x() - self.startPoint.x(),
-            self.endPoint.y() - self.startPoint.y(),
+        self.raster_shadow.reset(self.layer)
+        self.raster_shadow.set_delta_displacement(
+            self.end_point.x() - self.start_point.x(),
+            self.end_point.y() - self.start_point.y(),
             True,
         )
-        self.rasterShadow.show()
+        self.raster_shadow.show()
 
-    def _addDisplacementToPoint(self, rubberBand, point, doUpdate):
-        x = point.x() + self.endPoint.x() - self.startPoint.x()
-        y = point.y() + self.endPoint.y() - self.startPoint.y()
-        self.rubberBandExtent.addPoint(QgsPointXY(x, y), doUpdate)
+    def _add_displacement_to_point(self, rubber_band, point, do_update):
+        x = point.x() + self.end_point.x() - self.start_point.x()
+        y = point.y() + self.end_point.y() - self.start_point.y()
+        self.rubber_band_extent.addPoint(QgsPointXY(x, y), do_update)
 
 
 # move the mouse in the Y axis to rotate
@@ -147,49 +149,51 @@ class RotateRasterMapTool(QgsMapToolEmitPoint):
         self.canvas = iface.mapCanvas()
         QgsMapToolEmitPoint.__init__(self, self.canvas)
 
-        self.rasterShadow = RasterShadowMapCanvasItem(self.canvas)
+        self.raster_shadow = RasterShadowMapCanvasItem(self.canvas)
 
-        self.rubberBandExtent = QgsRubberBand(self.canvas, Qgis.GeometryType.Line)
-        self.rubberBandExtent.setColor(Qt.GlobalColor.red)
-        self.rubberBandExtent.setWidth(1)
+        self.rubber_band_extent = QgsRubberBand(self.canvas, Qgis.GeometryType.Line)
+        self.rubber_band_extent.setColor(Qt.GlobalColor.red)
+        self.rubber_band_extent.setWidth(1)
 
         # In case of rotation around pressed point (ctrl)
-        # Use rubberBand for displaying an horizontal line.
-        self.rubberBandDisplacement = QgsRubberBand(self.canvas, Qgis.GeometryType.Line)
-        self.rubberBandDisplacement.setColor(Qt.GlobalColor.red)
-        self.rubberBandDisplacement.setWidth(1)
+        # Use rubber_band for displaying an horizontal line.
+        self.rubber_band_displacement = QgsRubberBand(
+            self.canvas, Qgis.GeometryType.Line
+        )
+        self.rubber_band_displacement.setColor(Qt.GlobalColor.red)
+        self.rubber_band_displacement.setWidth(1)
 
         self.reset()
 
-    def setLayer(self, layer):
+    def set_layer(self, layer):
         self.layer = layer
 
     def reset(self):
-        self.startPoint = self.endPoint = None
-        self.isEmittingPoint = False
-        self.rubberBandExtent.reset(Qgis.GeometryType.Line)
-        self.rubberBandDisplacement.reset(Qgis.GeometryType.Line)
-        self.rasterShadow.reset()
+        self.start_point = self.end_point = None
+        self.is_emitting_point = False
+        self.rubber_band_extent.reset(Qgis.GeometryType.Line)
+        self.rubber_band_displacement.reset(Qgis.GeometryType.Line)
+        self.raster_shadow.reset()
         self.layer = None
 
     def canvasPressEvent(self, e):
-        self.startY = event_pos(e).y()
-        self.endY = self.startY
-        self.isEmittingPoint = True
+        self.start_y = event_pos(e).y()
+        self.end_y = self.start_y
+        self.is_emitting_point = True
         self.height = self.canvas.height()
 
         modifiers = QApplication.keyboardModifiers()
-        self.isRotationAroundPoint = bool(
+        self.is_rotation_around_point = bool(
             modifiers & Qt.KeyboardModifier.ControlModifier
         )
-        self.startPoint = self.toMapCoordinates(event_pos(e))
-        self.endPoint = self.startPoint
+        self.start_point = self.toMapCoordinates(event_pos(e))
+        self.end_point = self.start_point
 
-        self.isLayerVisible = isLayerVisible(self.iface, self.layer)
-        setLayerVisible(self.iface, self.layer, False)
+        self.is_layer_visible = is_layer_visible(self.iface, self.layer)
+        set_layer_visible(self.iface, self.layer, False)
 
-        rotation = self.computeRotation()
-        self.showRotation(rotation)
+        rotation = self.compute_rotation()
+        self.show_rotation(rotation)
 
         self.layer.history.append({
             "action": "rotation",
@@ -198,78 +202,84 @@ class RotateRasterMapTool(QgsMapToolEmitPoint):
         })  # rotation set
 
     def canvasReleaseEvent(self, e):
-        self.isEmittingPoint = False
+        self.is_emitting_point = False
 
-        self.rubberBandExtent.reset(Qgis.GeometryType.Line)
-        self.rubberBandDisplacement.reset(Qgis.GeometryType.Line)
-        self.rasterShadow.reset()
+        self.rubber_band_extent.reset(Qgis.GeometryType.Line)
+        self.rubber_band_displacement.reset(Qgis.GeometryType.Line)
+        self.raster_shadow.reset()
 
-        rotation = self.computeRotation()
-        if self.isRotationAroundPoint:
-            self.layer.moveCenterFromPointRotate(self.startPoint, rotation, 1, 1)
+        rotation = self.compute_rotation()
+        if self.is_rotation_around_point:
+            self.layer.move_center_from_point_rotate(self.start_point, rotation, 1, 1)
         val = self.layer.rotation + rotation
 
-        self.layer.setRotation(val)
+        self.layer.set_rotation(val)
 
-        setLayerVisible(self.iface, self.layer, self.isLayerVisible)
+        set_layer_visible(self.iface, self.layer, self.is_layer_visible)
         self.layer.repaint()
 
-        self.layer.commitTransformParameters()
+        self.layer.commit_transform_parameters()
 
     def canvasMoveEvent(self, e):
-        if not self.isEmittingPoint:
+        if not self.is_emitting_point:
             return
 
-        self.endY = event_pos(e).y()
-        rotation = self.computeRotation()
-        self.showRotation(rotation)
+        self.end_y = event_pos(e).y()
+        rotation = self.compute_rotation()
+        self.show_rotation(rotation)
 
-        self.endPoint = self.toMapCoordinates(event_pos(e))
+        self.end_point = self.toMapCoordinates(event_pos(e))
 
-    def computeRotation(self):
-        if self.isRotationAroundPoint:
-            dX = self.endPoint.x() - self.startPoint.x()
-            dY = self.endPoint.y() - self.startPoint.y()
-            return math.degrees(math.atan2(-dY, dX))
+    def compute_rotation(self):
+        if self.is_rotation_around_point:
+            d_x = self.end_point.x() - self.start_point.x()
+            d_y = self.end_point.y() - self.start_point.y()
+            return math.degrees(math.atan2(-d_y, d_x))
         else:
-            dY = self.endY - self.startY
-            return 90.0 * dY / self.height
+            d_y = self.end_y - self.start_y
+            return 90.0 * d_y / self.height
 
-    def showRotation(self, rotation):
-        if self.isRotationAroundPoint:
-            cornerPoints = self.layer.transformedCornerCoordinatesFromPoint(
-                self.startPoint, rotation, 1, 1
+    def show_rotation(self, rotation):
+        if self.is_rotation_around_point:
+            corner_points = self.layer.transformed_corner_coordinates_from_point(
+                self.start_point, rotation, 1, 1
             )
 
-            self.rasterShadow.reset(self.layer)
-            self.rasterShadow.setDeltaRotationFromPoint(rotation, self.startPoint, True)
-            self.rasterShadow.show()
+            self.raster_shadow.reset(self.layer)
+            self.raster_shadow.set_delta_rotation_from_point(
+                rotation, self.start_point, True
+            )
+            self.raster_shadow.show()
 
-            self.rubberBandDisplacement.reset(Qgis.GeometryType.Line)
-            point0 = QgsPointXY(self.startPoint.x() + 10, self.startPoint.y())
-            point1 = QgsPointXY(self.startPoint.x(), self.startPoint.y())
-            point2 = QgsPointXY(self.endPoint.x(), self.endPoint.y())
-            self.rubberBandDisplacement.addPoint(point0, False)
-            self.rubberBandDisplacement.addPoint(point1, False)
-            self.rubberBandDisplacement.addPoint(point2, True)  # true to update canvas
-            self.rubberBandDisplacement.show()
+            self.rubber_band_displacement.reset(Qgis.GeometryType.Line)
+            point0 = QgsPointXY(self.start_point.x() + 10, self.start_point.y())
+            point1 = QgsPointXY(self.start_point.x(), self.start_point.y())
+            point2 = QgsPointXY(self.end_point.x(), self.end_point.y())
+            self.rubber_band_displacement.addPoint(point0, False)
+            self.rubber_band_displacement.addPoint(point1, False)
+            self.rubber_band_displacement.addPoint(
+                point2, True
+            )  # true to update canvas
+            self.rubber_band_displacement.show()
         else:
-            center, originalRotation, xScale, yScale = self.layer.transformParameters()
-            newRotation = rotation + originalRotation
-            cornerPoints = self.layer.transformedCornerCoordinates(
-                center, newRotation, xScale, yScale
+            center, original_rotation, x_scale, y_scale = (
+                self.layer.transform_parameters()
+            )
+            new_rotation = rotation + original_rotation
+            corner_points = self.layer.transformed_corner_coordinates(
+                center, new_rotation, x_scale, y_scale
             )
 
-            self.rasterShadow.reset(self.layer)
-            self.rasterShadow.setDeltaRotation(rotation, True)
-            self.rasterShadow.show()
+            self.raster_shadow.reset(self.layer)
+            self.raster_shadow.set_delta_rotation(rotation, True)
+            self.raster_shadow.show()
 
-        self.rubberBandExtent.reset(Qgis.GeometryType.Line)
-        for point in cornerPoints:
-            self.rubberBandExtent.addPoint(point, False)
+        self.rubber_band_extent.reset(Qgis.GeometryType.Line)
+        for point in corner_points:
+            self.rubber_band_extent.addPoint(point, False)
         # for closing
-        self.rubberBandExtent.addPoint(cornerPoints[0], True)
-        self.rubberBandExtent.show()
+        self.rubber_band_extent.addPoint(corner_points[0], True)
+        self.rubber_band_extent.show()
 
 
 # move the map in x or y axis to scale in x or y dimensions of the
@@ -280,61 +290,63 @@ class ScaleRasterMapTool(QgsMapToolEmitPoint):
         self.canvas = iface.mapCanvas()
         QgsMapToolEmitPoint.__init__(self, self.canvas)
 
-        self.rasterShadow = RasterShadowMapCanvasItem(self.canvas)
+        self.raster_shadow = RasterShadowMapCanvasItem(self.canvas)
 
-        self.rubberBandExtent = QgsRubberBand(self.canvas, Qgis.GeometryType.Line)
-        self.rubberBandExtent.setColor(Qt.GlobalColor.red)
-        self.rubberBandExtent.setWidth(1)
+        self.rubber_band_extent = QgsRubberBand(self.canvas, Qgis.GeometryType.Line)
+        self.rubber_band_extent.setColor(Qt.GlobalColor.red)
+        self.rubber_band_extent.setWidth(1)
 
         self.reset()
 
-    def setLayer(self, layer):
+    def set_layer(self, layer):
         self.layer = layer
 
     def reset(self):
-        self.startPoint = self.endPoint = None
-        self.isEmittingPoint = False
-        self.rubberBandExtent.reset(Qgis.GeometryType.Line)
-        self.rasterShadow.reset()
+        self.start_point = self.end_point = None
+        self.is_emitting_point = False
+        self.rubber_band_extent.reset(Qgis.GeometryType.Line)
+        self.raster_shadow.reset()
         self.layer = None
 
     def canvasPressEvent(self, e):
         pressed_button = e.button()
         if pressed_button == Qt.MouseButton.LeftButton:
-            self.startPoint = event_pos(e)
-            self.endPoint = self.startPoint
-            self.isEmittingPoint = True
+            self.start_point = event_pos(e)
+            self.end_point = self.start_point
+            self.is_emitting_point = True
             self.height = float(self.canvas.height())
             self.width = float(self.canvas.width())
 
             modifiers = QApplication.keyboardModifiers()
-            self.isKeepRelativeScale = bool(
+            self.is_keep_relative_scale = bool(
                 modifiers & Qt.KeyboardModifier.ControlModifier
             )
 
-            self.isLayerVisible = isLayerVisible(self.iface, self.layer)
-            setLayerVisible(self.iface, self.layer, False)
+            self.is_layer_visible = is_layer_visible(self.iface, self.layer)
+            set_layer_visible(self.iface, self.layer, False)
 
-            scaling = self.computeScaling()
-            self.showScaling(*scaling)
+            scaling = self.compute_scaling()
+            self.show_scaling(*scaling)
         self.layer.history.append({
             "action": "scale",
-            "xScale": self.layer.xScale,
-            "yScale": self.layer.yScale,
+            "x_scale": self.layer.x_scale,
+            "y_scale": self.layer.y_scale,
         })
 
     def canvasReleaseEvent(self, e):
         pressed_button = e.button()
         if pressed_button == Qt.MouseButton.LeftButton:
-            self.isEmittingPoint = False
+            self.is_emitting_point = False
 
-            self.rubberBandExtent.reset(Qgis.GeometryType.Line)
-            self.rasterShadow.reset()
+            self.rubber_band_extent.reset(Qgis.GeometryType.Line)
+            self.raster_shadow.reset()
 
-            xScale, yScale = self.computeScaling()
-            self.layer.setScale(xScale * self.layer.xScale, yScale * self.layer.yScale)
+            x_scale, y_scale = self.compute_scaling()
+            self.layer.set_scale(
+                x_scale * self.layer.x_scale, y_scale * self.layer.y_scale
+            )
 
-            setLayerVisible(self.iface, self.layer, self.isLayerVisible)
+            set_layer_visible(self.iface, self.layer, self.is_layer_visible)
         elif pressed_button == Qt.MouseButton.RightButton:
             number, ok = QInputDialog.getText(
                 None, "Scale & DPI", "Enter scale,dpi (e.g. 3000,96)"
@@ -352,8 +364,8 @@ class ScaleRasterMapTool(QgsMapToolEmitPoint):
             scale = tryfloat(scales[0])
             dpi = tryfloat(scales[1])
             if scale and dpi:
-                xScale = scale / (dpi / 0.0254)
-                yScale = xScale
+                x_scale = scale / (dpi / 0.0254)
+                y_scale = x_scale
             else:
                 self.layer.history.pop()
                 QMessageBox.information(
@@ -363,54 +375,54 @@ class ScaleRasterMapTool(QgsMapToolEmitPoint):
                 )
                 return
 
-            self.layer.setScale(xScale, yScale)
+            self.layer.set_scale(x_scale, y_scale)
 
         self.layer.repaint()
-        self.layer.commitTransformParameters()
+        self.layer.commit_transform_parameters()
 
     def canvasMoveEvent(self, e):
-        if not self.isEmittingPoint:
+        if not self.is_emitting_point:
             return
 
-        self.endPoint = event_pos(e)
-        scaling = self.computeScaling()
-        self.showScaling(*scaling)
+        self.end_point = event_pos(e)
+        scaling = self.compute_scaling()
+        self.show_scaling(*scaling)
 
-    def computeScaling(self):
-        dX = -(self.endPoint.x() - self.startPoint.x())
-        dY = self.endPoint.y() - self.startPoint.y()
-        xScale = 1.0 - (dX / (self.width * 1.1))
-        yScale = 1.0 - (dY / (self.height * 1.1))
+    def compute_scaling(self):
+        d_x = -(self.end_point.x() - self.start_point.x())
+        d_y = self.end_point.y() - self.start_point.y()
+        x_scale = 1.0 - (d_x / (self.width * 1.1))
+        y_scale = 1.0 - (d_y / (self.height * 1.1))
 
-        if self.isKeepRelativeScale:
+        if self.is_keep_relative_scale:
             # keep same scale in both dimensions
-            return (xScale, xScale)
+            return (x_scale, x_scale)
         else:
-            return (xScale, yScale)
+            return (x_scale, y_scale)
 
-    def showScaling(self, xScale, yScale):
-        if xScale == 0 and yScale == 0:
+    def show_scaling(self, x_scale, y_scale):
+        if x_scale == 0 and y_scale == 0:
             return
 
-        center, rotation, originalXScale, originalYScale = (
-            self.layer.transformParameters()
+        center, rotation, original_x_scale, original_y_scale = (
+            self.layer.transform_parameters()
         )
-        newXScale = xScale * originalXScale
-        newYScale = yScale * originalYScale
-        cornerPoints = self.layer.transformedCornerCoordinates(
-            center, rotation, newXScale, newYScale
+        new_x_scale = x_scale * original_x_scale
+        new_y_scale = y_scale * original_y_scale
+        corner_points = self.layer.transformed_corner_coordinates(
+            center, rotation, new_x_scale, new_y_scale
         )
 
-        self.rubberBandExtent.reset(Qgis.GeometryType.Line)
-        for point in cornerPoints:
-            self.rubberBandExtent.addPoint(point, False)
+        self.rubber_band_extent.reset(Qgis.GeometryType.Line)
+        for point in corner_points:
+            self.rubber_band_extent.addPoint(point, False)
         # for closing
-        self.rubberBandExtent.addPoint(cornerPoints[0], True)
-        self.rubberBandExtent.show()
+        self.rubber_band_extent.addPoint(corner_points[0], True)
+        self.rubber_band_extent.show()
 
-        self.rasterShadow.reset(self.layer)
-        self.rasterShadow.setDeltaScale(xScale, yScale, True)
-        self.rasterShadow.show()
+        self.raster_shadow.reset(self.layer)
+        self.raster_shadow.set_delta_scale(x_scale, y_scale, True)
+        self.raster_shadow.show()
 
 
 class AdjustRasterMapTool(QgsMapToolEmitPoint):
@@ -419,83 +431,88 @@ class AdjustRasterMapTool(QgsMapToolEmitPoint):
         self.canvas = iface.mapCanvas()
         QgsMapToolEmitPoint.__init__(self, self.canvas)
 
-        self.rasterShadow = RasterShadowMapCanvasItem(self.canvas)
+        self.raster_shadow = RasterShadowMapCanvasItem(self.canvas)
 
-        self.rubberBandExtent = QgsRubberBand(self.canvas, Qgis.GeometryType.Line)
-        self.rubberBandExtent.setColor(Qt.GlobalColor.red)
-        self.rubberBandExtent.setWidth(1)
+        self.rubber_band_extent = QgsRubberBand(self.canvas, Qgis.GeometryType.Line)
+        self.rubber_band_extent.setColor(Qt.GlobalColor.red)
+        self.rubber_band_extent.setWidth(1)
 
-        self.rubberBandAdjustSide = QgsRubberBand(self.canvas, Qgis.GeometryType.Line)
-        self.rubberBandAdjustSide.setColor(Qt.GlobalColor.red)
-        self.rubberBandAdjustSide.setWidth(3)
+        self.rubber_band_adjust_side = QgsRubberBand(
+            self.canvas, Qgis.GeometryType.Line
+        )
+        self.rubber_band_adjust_side.setColor(Qt.GlobalColor.red)
+        self.rubber_band_adjust_side.setWidth(3)
 
         self.reset()
 
-    def setLayer(self, layer):
+    def set_layer(self, layer):
         self.layer = layer
 
     def reset(self):
-        self.startPoint = self.endPoint = None
-        self.isEmittingPoint = False
-        self.rubberBandExtent.reset(Qgis.GeometryType.Line)
-        self.rubberBandAdjustSide.reset(Qgis.GeometryType.Line)
-        self.rasterShadow.reset()
+        self.start_point = self.end_point = None
+        self.is_emitting_point = False
+        self.rubber_band_extent.reset(Qgis.GeometryType.Line)
+        self.rubber_band_adjust_side.reset(Qgis.GeometryType.Line)
+        self.raster_shadow.reset()
         self.layer = None
 
     def canvasPressEvent(self, e):
         # find the side of the rectangle closest to the click and some data
         # necessary to compute the new cneter and scale
-        topLeft, topRight, bottomRight, bottomLeft = self.layer.cornerCoordinates()
-        top = [topLeft, topRight]
-        right = [bottomRight, topRight]
-        bottom = [bottomRight, bottomLeft]
-        left = [bottomLeft, topLeft]
+        top_left, top_right, bottom_right, bottom_left = self.layer.corner_coordinates()
+        top = [top_left, top_right]
+        right = [bottom_right, top_right]
+        bottom = [bottom_right, bottom_left]
+        left = [bottom_left, top_left]
 
         click = QgsGeometry.fromPointXY(self.toMapCoordinates(event_pos(e)))
 
-        # order is important (for referenceSide)
+        # order is important (for reference_side)
         sides = [top, right, bottom, left]
         distances = [click.distance(QgsGeometry.fromPolylineXY(side)) for side in sides]
-        self.indexSide = self.minDistance(distances)
-        self.side = sides[self.indexSide]
-        self.sidePoint = self.center(self.side)
-        self.vector = self.directionVector(self.side)
-        # side that does not move (opposite of indexSide)
-        self.referenceSide = sides[(self.indexSide + 2) % 4]
-        self.referencePoint = self.center(self.referenceSide)
-        self.referenceDistance = self.distance(self.sidePoint, self.referencePoint)
-        self.isXScale = self.indexSide % 2 == 1
+        self.index_side = self.min_distance(distances)
+        self.side = sides[self.index_side]
+        self.side_point = self.center(self.side)
+        self.vector = self.direction_vector(self.side)
+        # side that does not move (opposite of index_side)
+        self.reference_side = sides[(self.index_side + 2) % 4]
+        self.reference_point = self.center(self.reference_side)
+        self.reference_distance = self.distance(self.side_point, self.reference_point)
+        self.is_x_scale = self.index_side % 2 == 1
 
-        self.startPoint = click.asPoint()
-        self.endPoint = self.startPoint
-        self.isEmittingPoint = True
+        self.start_point = click.asPoint()
+        self.end_point = self.start_point
+        self.is_emitting_point = True
 
-        self.isLayerVisible = isLayerVisible(self.iface, self.layer)
-        setLayerVisible(self.iface, self.layer, False)
+        self.is_layer_visible = is_layer_visible(self.iface, self.layer)
+        set_layer_visible(self.iface, self.layer, False)
 
-        adjustment = self.computeAdjustment()
-        self.showAdjustment(*adjustment)
+        adjustment = self.compute_adjustment()
+        self.show_adjustment(*adjustment)
         self.layer.history.append({
             "action": "adjust",
             "center": self.layer.center,
-            "xScale": self.layer.xScale,
-            "yScale": self.layer.yScale,
+            "x_scale": self.layer.x_scale,
+            "y_scale": self.layer.y_scale,
         })
 
-    def minDistance(self, distances):
-        sortedDistances = [
+    def min_distance(self, distances):
+        sorted_distances = [
             i[0] for i in sorted(enumerate(distances), key=itemgetter(1))
         ]
         # first is min
-        return sortedDistances[0]
+        return sorted_distances[0]
 
-    def directionVector(self, side):
-        sideCenter = self.center(side)
-        layerCenter = self.layer.center
-        vector = [sideCenter.x() - layerCenter.x(), sideCenter.y() - layerCenter.y()]
+    def direction_vector(self, side):
+        side_center = self.center(side)
+        layer_center = self.layer.center
+        vector = [
+            side_center.x() - layer_center.x(),
+            side_center.y() - layer_center.y(),
+        ]
         norm = math.sqrt(vector[0] ** 2 + vector[1] ** 2)
-        normedVector = [vector[0] / norm, vector[1] / norm]
-        return normedVector
+        normed_vector = [vector[0] / norm, vector[1] / norm]
+        return normed_vector
 
     def center(self, side):
         return QgsPointXY(
@@ -506,85 +523,89 @@ class AdjustRasterMapTool(QgsMapToolEmitPoint):
         return math.sqrt((pt1.x() - pt2.x()) ** 2 + (pt1.y() - pt2.y()) ** 2)
 
     def canvasReleaseEvent(self, e):
-        self.isEmittingPoint = False
+        self.is_emitting_point = False
 
-        self.rubberBandExtent.reset(Qgis.GeometryType.Line)
-        self.rubberBandAdjustSide.reset(Qgis.GeometryType.Line)
-        self.rasterShadow.reset()
+        self.rubber_band_extent.reset(Qgis.GeometryType.Line)
+        self.rubber_band_adjust_side.reset(Qgis.GeometryType.Line)
+        self.raster_shadow.reset()
 
-        center, xScale, yScale = self.computeAdjustment()
-        self.layer.setCenter(center)
-        self.layer.setScale(xScale * self.layer.xScale, yScale * self.layer.yScale)
+        center, x_scale, y_scale = self.compute_adjustment()
+        self.layer.set_center(center)
+        self.layer.set_scale(x_scale * self.layer.x_scale, y_scale * self.layer.y_scale)
 
-        setLayerVisible(self.iface, self.layer, self.isLayerVisible)
+        set_layer_visible(self.iface, self.layer, self.is_layer_visible)
         self.layer.repaint()
 
-        self.layer.commitTransformParameters()
+        self.layer.commit_transform_parameters()
 
     def canvasMoveEvent(self, e):
-        if not self.isEmittingPoint:
+        if not self.is_emitting_point:
             return
 
-        self.endPoint = self.toMapCoordinates(event_pos(e))
+        self.end_point = self.toMapCoordinates(event_pos(e))
 
-        adjustment = self.computeAdjustment()
-        self.showAdjustment(*adjustment)
+        adjustment = self.compute_adjustment()
+        self.show_adjustment(*adjustment)
 
-    def computeAdjustment(self):
-        dX = self.endPoint.x() - self.startPoint.x()
-        dY = self.endPoint.y() - self.startPoint.y()
+    def compute_adjustment(self):
+        d_x = self.end_point.x() - self.start_point.x()
+        d_y = self.end_point.y() - self.start_point.y()
         # project on vector
-        dp = dX * self.vector[0] + dY * self.vector[1]
+        dp = d_x * self.vector[0] + d_y * self.vector[1]
 
         # do not go beyond 5% of the current size of side
-        if dp < -0.95 * self.referenceDistance:
-            dp = -0.95 * self.referenceDistance
+        if dp < -0.95 * self.reference_distance:
+            dp = -0.95 * self.reference_distance
 
-        updatedSidePoint = QgsPointXY(
-            self.sidePoint.x() + dp * self.vector[0],
-            self.sidePoint.y() + dp * self.vector[1],
+        updated_side_point = QgsPointXY(
+            self.side_point.x() + dp * self.vector[0],
+            self.side_point.y() + dp * self.vector[1],
         )
 
-        center = self.center([self.referencePoint, updatedSidePoint])
-        scaleFactor = self.distance(self.referencePoint, updatedSidePoint)
-        if self.isXScale:
-            xScale = scaleFactor / self.referenceDistance
-            yScale = 1.0
+        center = self.center([self.reference_point, updated_side_point])
+        scale_factor = self.distance(self.reference_point, updated_side_point)
+        if self.is_x_scale:
+            x_scale = scale_factor / self.reference_distance
+            y_scale = 1.0
         else:
-            xScale = 1.0
-            yScale = scaleFactor / self.referenceDistance
+            x_scale = 1.0
+            y_scale = scale_factor / self.reference_distance
 
-        return (center, xScale, yScale)
+        return (center, x_scale, y_scale)
 
-    def showAdjustment(self, center, xScale, yScale):
-        _, rotation, originalXScale, originalYScale = self.layer.transformParameters()
-        newXScale = xScale * originalXScale
-        newYScale = yScale * originalYScale
-        cornerPoints = self.layer.transformedCornerCoordinates(
-            center, rotation, newXScale, newYScale
+    def show_adjustment(self, center, x_scale, y_scale):
+        _, rotation, original_x_scale, original_y_scale = (
+            self.layer.transform_parameters()
+        )
+        new_x_scale = x_scale * original_x_scale
+        new_y_scale = y_scale * original_y_scale
+        corner_points = self.layer.transformed_corner_coordinates(
+            center, rotation, new_x_scale, new_y_scale
         )
 
-        self.rubberBandExtent.reset(Qgis.GeometryType.Line)
-        for point in cornerPoints:
-            self.rubberBandExtent.addPoint(point, False)
+        self.rubber_band_extent.reset(Qgis.GeometryType.Line)
+        for point in corner_points:
+            self.rubber_band_extent.addPoint(point, False)
         # for closing
-        self.rubberBandExtent.addPoint(cornerPoints[0], True)
-        self.rubberBandExtent.show()
+        self.rubber_band_extent.addPoint(corner_points[0], True)
+        self.rubber_band_extent.show()
 
         # show rubberband for side
-        # see def of indexSide in init:
-        # cornerpoints are (topLeft, topRight, bottomRight, bottomLeft)
-        self.rubberBandAdjustSide.reset(Qgis.GeometryType.Line)
-        self.rubberBandAdjustSide.addPoint(cornerPoints[self.indexSide % 4], False)
-        self.rubberBandAdjustSide.addPoint(cornerPoints[(self.indexSide + 1) % 4], True)
-        self.rubberBandAdjustSide.show()
+        # see def of index_side in init:
+        # cornerpoints are (top_left, top_right, bottom_right, bottom_left)
+        self.rubber_band_adjust_side.reset(Qgis.GeometryType.Line)
+        self.rubber_band_adjust_side.addPoint(corner_points[self.index_side % 4], False)
+        self.rubber_band_adjust_side.addPoint(
+            corner_points[(self.index_side + 1) % 4], True
+        )
+        self.rubber_band_adjust_side.show()
 
-        self.rasterShadow.reset(self.layer)
+        self.raster_shadow.reset(self.layer)
         dx = center.x() - self.layer.center.x()
         dy = center.y() - self.layer.center.y()
-        self.rasterShadow.setDeltaDisplacement(dx, dy, False)
-        self.rasterShadow.setDeltaScale(xScale, yScale, True)
-        self.rasterShadow.show()
+        self.raster_shadow.set_delta_displacement(dx, dy, False)
+        self.raster_shadow.set_delta_scale(x_scale, y_scale, True)
+        self.raster_shadow.show()
 
 
 class GeorefRasterBy2PointsMapTool(QgsMapToolEmitPoint):
@@ -593,38 +614,40 @@ class GeorefRasterBy2PointsMapTool(QgsMapToolEmitPoint):
         self.canvas = iface.mapCanvas()
         QgsMapToolEmitPoint.__init__(self, self.canvas)
 
-        self.rasterShadow = RasterShadowMapCanvasItem(self.canvas)
+        self.raster_shadow = RasterShadowMapCanvasItem(self.canvas)
 
-        self.firstPoint = None
+        self.first_point = None
 
-        self.rubberBandOrigin = QgsRubberBand(self.canvas, Qgis.GeometryType.Point)
-        self.rubberBandOrigin.setColor(Qt.GlobalColor.red)
-        self.rubberBandOrigin.setIcon(QgsRubberBand.ICON_CIRCLE)
-        self.rubberBandOrigin.setIconSize(7)
-        self.rubberBandOrigin.setWidth(2)
+        self.rubber_band_origin = QgsRubberBand(self.canvas, Qgis.GeometryType.Point)
+        self.rubber_band_origin.setColor(Qt.GlobalColor.red)
+        self.rubber_band_origin.setIcon(QgsRubberBand.ICON_CIRCLE)
+        self.rubber_band_origin.setIconSize(7)
+        self.rubber_band_origin.setWidth(2)
 
-        self.rubberBandDisplacement = QgsRubberBand(self.canvas, Qgis.GeometryType.Line)
-        self.rubberBandDisplacement.setColor(Qt.GlobalColor.red)
-        self.rubberBandDisplacement.setWidth(1)
+        self.rubber_band_displacement = QgsRubberBand(
+            self.canvas, Qgis.GeometryType.Line
+        )
+        self.rubber_band_displacement.setColor(Qt.GlobalColor.red)
+        self.rubber_band_displacement.setWidth(1)
 
-        self.rubberBandExtent = QgsRubberBand(self.canvas, Qgis.GeometryType.Line)
-        self.rubberBandExtent.setColor(Qt.GlobalColor.red)
-        self.rubberBandExtent.setWidth(2)
+        self.rubber_band_extent = QgsRubberBand(self.canvas, Qgis.GeometryType.Line)
+        self.rubber_band_extent.setColor(Qt.GlobalColor.red)
+        self.rubber_band_extent.setWidth(2)
 
-        self.isLayerVisible = True
+        self.is_layer_visible = True
 
         self.reset()
 
-    def setLayer(self, layer):
+    def set_layer(self, layer):
         self.layer = layer
 
     def reset(self):
-        self.startPoint = self.endPoint = self.firstPoint = None
-        self.isEmittingPoint = False
-        self.rubberBandOrigin.reset(Qgis.GeometryType.Point)
-        self.rubberBandDisplacement.reset(Qgis.GeometryType.Line)
-        self.rubberBandExtent.reset(Qgis.GeometryType.Line)
-        self.rasterShadow.reset()
+        self.start_point = self.end_point = self.first_point = None
+        self.is_emitting_point = False
+        self.rubber_band_origin.reset(Qgis.GeometryType.Point)
+        self.rubber_band_displacement.reset(Qgis.GeometryType.Line)
+        self.rubber_band_extent.reset(Qgis.GeometryType.Line)
+        self.raster_shadow.reset()
         self.layer = None
 
     def deactivate(self):
@@ -632,181 +655,183 @@ class GeorefRasterBy2PointsMapTool(QgsMapToolEmitPoint):
         self.reset()
 
     def canvasPressEvent(self, e):
-        if self.firstPoint is None:
-            self.startPoint = self.toMapCoordinates(event_pos(e))
-            self.endPoint = self.startPoint
-            self.isEmittingPoint = True
-            self.originalCenter = self.layer.center
+        if self.first_point is None:
+            self.start_point = self.toMapCoordinates(event_pos(e))
+            self.end_point = self.start_point
+            self.is_emitting_point = True
+            self.original_center = self.layer.center
             # this tool do the displacement itself TODO update so it is done by
             # transformed coordinates + new center)
-            self.originalCornerPoints = self.layer.transformedCornerCoordinates(
-                *self.layer.transformParameters()
+            self.original_corner_points = self.layer.transformed_corner_coordinates(
+                *self.layer.transform_parameters()
             )
 
-            self.isLayerVisible = isLayerVisible(self.iface, self.layer)
-            setLayerVisible(self.iface, self.layer, False)
+            self.is_layer_visible = is_layer_visible(self.iface, self.layer)
+            set_layer_visible(self.iface, self.layer, False)
 
-            self.showDisplacement(self.startPoint, self.endPoint)
+            self.show_displacement(self.start_point, self.end_point)
             self.layer.history.append({
                 "action": "2pointsA",
                 "center": self.layer.center,
             })
         else:
-            self.startPoint = self.toMapCoordinates(event_pos(e))
-            self.endPoint = self.startPoint
+            self.start_point = self.toMapCoordinates(event_pos(e))
+            self.end_point = self.start_point
 
-            self.startY = event_pos(e).y()
-            self.endY = self.startY
-            self.isEmittingPoint = True
+            self.start_y = event_pos(e).y()
+            self.end_y = self.start_y
+            self.is_emitting_point = True
             self.height = self.canvas.height()
 
-            self.isLayerVisible = isLayerVisible(self.iface, self.layer)
-            setLayerVisible(self.iface, self.layer, False)
+            self.is_layer_visible = is_layer_visible(self.iface, self.layer)
+            set_layer_visible(self.iface, self.layer, False)
 
-            rotation = self.computeRotation()
-            xScale = yScale = self.computeScale()
-            self.showRotationScale(rotation, xScale, yScale)
+            rotation = self.compute_rotation()
+            x_scale = y_scale = self.compute_scale()
+            self.show_rotation_scale(rotation, x_scale, y_scale)
             self.layer.history.append({
                 "action": "2pointsB",
                 "center": self.layer.center,
-                "xScale": self.layer.xScale,
-                "yScale": self.layer.yScale,
+                "x_scale": self.layer.x_scale,
+                "y_scale": self.layer.y_scale,
                 "rotation": self.layer.rotation,
             })
 
     def canvasReleaseEvent(self, e):
-        self.isEmittingPoint = False
+        self.is_emitting_point = False
 
-        self.rubberBandDisplacement.reset(Qgis.GeometryType.Line)
-        self.rubberBandExtent.reset(Qgis.GeometryType.Line)
-        self.rasterShadow.reset()
+        self.rubber_band_displacement.reset(Qgis.GeometryType.Line)
+        self.rubber_band_extent.reset(Qgis.GeometryType.Line)
+        self.raster_shadow.reset()
 
-        if self.firstPoint is None:
-            x = self.originalCenter.x() + self.endPoint.x() - self.startPoint.x()
-            y = self.originalCenter.y() + self.endPoint.y() - self.startPoint.y()
-            self.layer.setCenter(QgsPointXY(x, y))
-            self.firstPoint = self.endPoint
+        if self.first_point is None:
+            x = self.original_center.x() + self.end_point.x() - self.start_point.x()
+            y = self.original_center.y() + self.end_point.y() - self.start_point.y()
+            self.layer.set_center(QgsPointXY(x, y))
+            self.first_point = self.end_point
 
-            setLayerVisible(self.iface, self.layer, self.isLayerVisible)
+            set_layer_visible(self.iface, self.layer, self.is_layer_visible)
             self.layer.repaint()
 
-            self.layer.commitTransformParameters()
+            self.layer.commit_transform_parameters()
         else:
-            rotation = self.computeRotation()
-            xScale = yScale = self.computeScale()
-            self.layer.moveCenterFromPointRotate(
-                self.firstPoint, rotation, xScale, yScale
+            rotation = self.compute_rotation()
+            x_scale = y_scale = self.compute_scale()
+            self.layer.move_center_from_point_rotate(
+                self.first_point, rotation, x_scale, y_scale
             )
-            self.layer.setRotation(self.layer.rotation + rotation)
-            self.layer.setScale(self.layer.xScale * xScale, self.layer.yScale * yScale)
+            self.layer.set_rotation(self.layer.rotation + rotation)
+            self.layer.set_scale(
+                self.layer.x_scale * x_scale, self.layer.y_scale * y_scale
+            )
 
-            setLayerVisible(self.iface, self.layer, self.isLayerVisible)
+            set_layer_visible(self.iface, self.layer, self.is_layer_visible)
             self.layer.repaint()
 
-            self.layer.commitTransformParameters()
+            self.layer.commit_transform_parameters()
 
-            self.rubberBandDisplacement.reset(Qgis.GeometryType.Line)
-            self.rubberBandExtent.reset(Qgis.GeometryType.Line)
-            self.rubberBandOrigin.reset(Qgis.GeometryType.Point)
-            self.rasterShadow.reset()
+            self.rubber_band_displacement.reset(Qgis.GeometryType.Line)
+            self.rubber_band_extent.reset(Qgis.GeometryType.Line)
+            self.rubber_band_origin.reset(Qgis.GeometryType.Point)
+            self.raster_shadow.reset()
 
-            self.firstPoint = None
-            self.startPoint = self.endPoint = None
+            self.first_point = None
+            self.start_point = self.end_point = None
 
     def canvasMoveEvent(self, e):
-        if not self.isEmittingPoint:
+        if not self.is_emitting_point:
             return
 
-        self.endPoint = self.toMapCoordinates(event_pos(e))
+        self.end_point = self.toMapCoordinates(event_pos(e))
 
-        if self.firstPoint is None:
-            self.showDisplacement(self.startPoint, self.endPoint)
+        if self.first_point is None:
+            self.show_displacement(self.start_point, self.end_point)
         else:
-            self.endY = event_pos(e).y()
-            rotation = self.computeRotation()
-            xScale = yScale = self.computeScale()
-            self.showRotationScale(rotation, xScale, yScale)
+            self.end_y = event_pos(e).y()
+            rotation = self.compute_rotation()
+            x_scale = y_scale = self.compute_scale()
+            self.show_rotation_scale(rotation, x_scale, y_scale)
 
-    def computeRotation(self):
+    def compute_rotation(self):
         # The angle is the difference between angle
-        # horizontal/endPoint-firstPoint and horizontal/startPoint-firstPoint.
-        dX0 = self.startPoint.x() - self.firstPoint.x()
-        dY0 = self.startPoint.y() - self.firstPoint.y()
-        dX = self.endPoint.x() - self.firstPoint.x()
-        dY = self.endPoint.y() - self.firstPoint.y()
-        return math.degrees(math.atan2(-dY, dX) - math.atan2(-dY0, dX0))
+        # horizontal/end_point-first_point and horizontal/start_point-first_point.
+        d_x0 = self.start_point.x() - self.first_point.x()
+        d_y0 = self.start_point.y() - self.first_point.y()
+        d_x = self.end_point.x() - self.first_point.x()
+        d_y = self.end_point.y() - self.first_point.y()
+        return math.degrees(math.atan2(-d_y, d_x) - math.atan2(-d_y0, d_x0))
 
-    def computeScale(self):
-        # The scale is the ratio between endPoint-firstPoint and
-        # startPoint-firstPoint.
-        dX0 = self.startPoint.x() - self.firstPoint.x()
-        dY0 = self.startPoint.y() - self.firstPoint.y()
-        dX = self.endPoint.x() - self.firstPoint.x()
-        dY = self.endPoint.y() - self.firstPoint.y()
-        return math.sqrt((dX * dX + dY * dY) / (dX0 * dX0 + dY0 * dY0))
+    def compute_scale(self):
+        # The scale is the ratio between end_point-first_point and
+        # start_point-first_point.
+        d_x0 = self.start_point.x() - self.first_point.x()
+        d_y0 = self.start_point.y() - self.first_point.y()
+        d_x = self.end_point.x() - self.first_point.x()
+        d_y = self.end_point.y() - self.first_point.y()
+        return math.sqrt((d_x * d_x + d_y * d_y) / (d_x0 * d_x0 + d_y0 * d_y0))
 
-    def showRotationScale(self, rotation, xScale, yScale):
-        center, _, _, _ = self.layer.transformParameters()
-        # newRotation = rotation + originalRotation
-        cornerPoints = self.layer.transformedCornerCoordinatesFromPoint(
-            self.firstPoint, rotation, xScale, yScale
+    def show_rotation_scale(self, rotation, x_scale, y_scale):
+        center, _, _, _ = self.layer.transform_parameters()
+        # new_rotation = rotation + original_rotation
+        corner_points = self.layer.transformed_corner_coordinates_from_point(
+            self.first_point, rotation, x_scale, y_scale
         )
 
-        self.rubberBandExtent.reset(Qgis.GeometryType.Line)
-        for point in cornerPoints:
-            self.rubberBandExtent.addPoint(point, False)
-        self.rubberBandExtent.addPoint(cornerPoints[0], True)
-        self.rubberBandExtent.show()
+        self.rubber_band_extent.reset(Qgis.GeometryType.Line)
+        for point in corner_points:
+            self.rubber_band_extent.addPoint(point, False)
+        self.rubber_band_extent.addPoint(corner_points[0], True)
+        self.rubber_band_extent.show()
 
         # Calculate the displacement of the center due to the rotation from
         # another point.
-        newCenterDX = (cornerPoints[0].x() + cornerPoints[2].x()) / 2 - center.x()
-        newCenterDY = (cornerPoints[0].y() + cornerPoints[2].y()) / 2 - center.y()
-        self.rasterShadow.reset(self.layer)
-        self.rasterShadow.setDeltaDisplacement(newCenterDX, newCenterDY, False)
-        self.rasterShadow.setDeltaScale(xScale, yScale, False)
-        self.rasterShadow.setDeltaRotation(rotation, True)
-        self.rasterShadow.show()
+        new_center_dx = (corner_points[0].x() + corner_points[2].x()) / 2 - center.x()
+        new_center_dy = (corner_points[0].y() + corner_points[2].y()) / 2 - center.y()
+        self.raster_shadow.reset(self.layer)
+        self.raster_shadow.set_delta_displacement(new_center_dx, new_center_dy, False)
+        self.raster_shadow.set_delta_scale(x_scale, y_scale, False)
+        self.raster_shadow.set_delta_rotation(rotation, True)
+        self.raster_shadow.show()
 
-        self.rubberBandDisplacement.reset(Qgis.GeometryType.Line)
-        point0 = QgsPointXY(self.startPoint.x(), self.startPoint.y())
-        point1 = QgsPointXY(self.firstPoint.x(), self.firstPoint.y())
-        point2 = QgsPointXY(self.endPoint.x(), self.endPoint.y())
-        self.rubberBandDisplacement.addPoint(point0, False)
-        self.rubberBandDisplacement.addPoint(point1, False)
-        self.rubberBandDisplacement.addPoint(point2, True)  # true to update canvas
-        self.rubberBandDisplacement.show()
+        self.rubber_band_displacement.reset(Qgis.GeometryType.Line)
+        point0 = QgsPointXY(self.start_point.x(), self.start_point.y())
+        point1 = QgsPointXY(self.first_point.x(), self.first_point.y())
+        point2 = QgsPointXY(self.end_point.x(), self.end_point.y())
+        self.rubber_band_displacement.addPoint(point0, False)
+        self.rubber_band_displacement.addPoint(point1, False)
+        self.rubber_band_displacement.addPoint(point2, True)  # true to update canvas
+        self.rubber_band_displacement.show()
 
-    def showDisplacement(self, startPoint, endPoint):
-        self.rubberBandOrigin.reset(Qgis.GeometryType.Point)
-        self.rubberBandOrigin.addPoint(endPoint, True)
-        self.rubberBandOrigin.show()
+    def show_displacement(self, start_point, end_point):
+        self.rubber_band_origin.reset(Qgis.GeometryType.Point)
+        self.rubber_band_origin.addPoint(end_point, True)
+        self.rubber_band_origin.show()
 
-        self.rubberBandDisplacement.reset(Qgis.GeometryType.Line)
-        point1 = QgsPointXY(startPoint.x(), startPoint.y())
-        point2 = QgsPointXY(endPoint.x(), endPoint.y())
-        self.rubberBandDisplacement.addPoint(point1, False)
-        self.rubberBandDisplacement.addPoint(point2, True)  # true to update canvas
-        self.rubberBandDisplacement.show()
+        self.rubber_band_displacement.reset(Qgis.GeometryType.Line)
+        point1 = QgsPointXY(start_point.x(), start_point.y())
+        point2 = QgsPointXY(end_point.x(), end_point.y())
+        self.rubber_band_displacement.addPoint(point1, False)
+        self.rubber_band_displacement.addPoint(point2, True)  # true to update canvas
+        self.rubber_band_displacement.show()
 
-        self.rubberBandExtent.reset(Qgis.GeometryType.Line)
-        for point in self.originalCornerPoints:
-            self._addDisplacementToPoint(self.rubberBandExtent, point, False)
+        self.rubber_band_extent.reset(Qgis.GeometryType.Line)
+        for point in self.original_corner_points:
+            self._add_displacement_to_point(self.rubber_band_extent, point, False)
         # for closing
-        self._addDisplacementToPoint(
-            self.rubberBandExtent, self.originalCornerPoints[0], True
+        self._add_displacement_to_point(
+            self.rubber_band_extent, self.original_corner_points[0], True
         )
-        self.rubberBandExtent.show()
+        self.rubber_band_extent.show()
 
-        self.rasterShadow.reset(self.layer)
-        self.rasterShadow.setDeltaDisplacement(
-            self.endPoint.x() - self.startPoint.x(),
-            self.endPoint.y() - self.startPoint.y(),
+        self.raster_shadow.reset(self.layer)
+        self.raster_shadow.set_delta_displacement(
+            self.end_point.x() - self.start_point.x(),
+            self.end_point.y() - self.start_point.y(),
             True,
         )
-        self.rasterShadow.show()
+        self.raster_shadow.show()
 
-    def _addDisplacementToPoint(self, rubberBand, point, doUpdate):
-        x = point.x() + self.endPoint.x() - self.startPoint.x()
-        y = point.y() + self.endPoint.y() - self.startPoint.y()
-        self.rubberBandExtent.addPoint(QgsPointXY(x, y), doUpdate)
+    def _add_displacement_to_point(self, rubber_band, point, do_update):
+        x = point.x() + self.end_point.x() - self.start_point.x()
+        y = point.y() + self.end_point.y() - self.start_point.y()
+        self.rubber_band_extent.addPoint(QgsPointXY(x, y), do_update)

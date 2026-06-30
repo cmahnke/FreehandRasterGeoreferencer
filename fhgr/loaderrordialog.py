@@ -48,25 +48,25 @@ class LoadErrorDialog(QDialog):
             self.checkBoxAllowDifferentDimensions.setVisible(False)
         self.lineEditImagePath.setPlaceholderText("Replacement image path")
         QApplication.setOverrideCursor(Qt.CursorShape.ArrowCursor)
-        self.pushButtonBrowse.clicked.connect(self.showBrowserDialog)
+        self.pushButtonBrowse.clicked.connect(self.show_browser_dialog)
         adjust_dialog_to_content(self, min_text_columns=72)
 
     def clear(self):
         self.lineEditImagePath.setText("")
 
-    def showBrowserDialog(self):
-        bDir, found = QgsProject.instance().readEntry(
+    def show_browser_dialog(self):
+        browser_dir, found = QgsProject.instance().readEntry(
             utils.SETTINGS_KEY, utils.SETTING_BROWSER_RASTER_DIR, None
         )
 
-        if not found or not bDir or not os.path.isdir(bDir):
-            bDir = os.path.expanduser("~")
+        if not found or not browser_dir or not os.path.isdir(browser_dir):
+            browser_dir = os.path.expanduser("~")
 
-        qDebug(bDir)
+        qDebug(browser_dir)
         filepath, _ = QFileDialog.getOpenFileName(
             self,
             "Select replacement raster",
-            bDir,
+            browser_dir,
             "Rasters (*.png *.bmp *.jpg *.jpeg *.tif *.tiff *.pdf *.jp2 *.ecw);;"
             "All files (*)",
         )
@@ -74,9 +74,9 @@ class LoadErrorDialog(QDialog):
         self.lineEditImagePath.setToolTip(filepath)
 
         if filepath:
-            bDir, _ = os.path.split(filepath)
+            browser_dir, _ = os.path.split(filepath)
             QgsProject.instance().writeEntry(
-                utils.SETTINGS_KEY, utils.SETTING_BROWSER_RASTER_DIR, bDir
+                utils.SETTINGS_KEY, utils.SETTING_BROWSER_RASTER_DIR, browser_dir
             )
 
     def done(self, ack):
@@ -88,26 +88,26 @@ class LoadErrorDialog(QDialog):
         if result:
             self.done(QDialog.DialogCode.Accepted)
         else:
-            msgBox = QMessageBox()
-            msgBox.setWindowTitle("Error")
-            msgBox.setText(message)
-            msgBox.setDetailedText(details)
-            msgBox.setStandardButtons(QMessageBox.StandardButton.Ok)
-            configure_message_box(msgBox)
-            msgBox.exec()
+            message_box = QMessageBox()
+            message_box.setWindowTitle("Error")
+            message_box.setText(message)
+            message_box.setDetailedText(details)
+            message_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+            configure_message_box(message_box)
+            message_box.exec()
 
     def validate(self):
         result = True
         message = ""
         details = ""
 
-        self.imagePath = self.lineEditImagePath.text()
-        if not os.path.isfile(self.imagePath):
+        self.image_path = self.lineEditImagePath.text()
+        if not os.path.isfile(self.image_path):
             result = False
             details += "The path must be an image file"
         else:
             try:
-                width, height = probe_raster_size(self.imagePath)
+                width, height = probe_raster_size(self.image_path)
             except RasterLoadError as ex:
                 result = False
                 if len(details) > 0:
