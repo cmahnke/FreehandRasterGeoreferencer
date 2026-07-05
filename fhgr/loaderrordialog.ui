@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Freehand Raster Georeferencer - Image not found</string>
+   <string>Freehand raster georeferencer - Image not found</string>
   </property>
   <property name="modal">
    <bool>true</bool>

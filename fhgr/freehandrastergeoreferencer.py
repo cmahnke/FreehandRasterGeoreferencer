@@ -34,7 +34,7 @@ from .layer import (
 
 
 class FreehandRasterGeoreferencer:
-    PLUGIN_MENU = "&Freehand Raster Georeferencer"
+    PLUGIN_MENU = "&Freehand raster georeferencer"
 
     def __init__(self, iface):
         self.iface = iface

@@ -154,13 +154,13 @@ class ExportGeorefRasterCommand:
                 )
 
             widget = QgsMessageBar.createMessage(
-                "Raster Geoferencer", "Raster exported successfully."
+                "Freehand raster georeferencer", "Raster exported successfully."
             )
             self.iface.messageBar().pushWidget(widget, Qgis.MessageLevel.Info, 2)
         except Exception as ex:
             QgsMessageLog.logMessage(repr(ex))
             widget = QgsMessageBar.createMessage(
-                "Raster Geoferencer",
+                "Freehand raster georeferencer",
                 "There was an error performing this command. "
                 "See QGIS Message log for details.",
             )
